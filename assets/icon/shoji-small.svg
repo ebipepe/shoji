@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="256" height="256">
+  <!-- Small-size variant of the Shoji icon (16-24px): fewer lattice bars so it stays crisp. -->
+  <rect x="1" y="1" width="30" height="30" rx="6" fill="#6a3f22"/>
+  <rect x="4" y="4" width="24" height="24" rx="3" fill="#fbf3e2"/>
+  <rect x="15" y="4" width="2" height="24" fill="#6a3f22"/>
+  <rect x="4" y="15" width="24" height="2" fill="#6a3f22"/>
+  <path d="M17 17 h11 v8 q0 3 -3 3 h-8 z" fill="#2f6f5e"/>
+</svg>

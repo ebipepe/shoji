@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <!-- Shoji icon: a paper sliding screen. Light passes through; the view (ads, trackers) does not. -->
+  <defs>
+    <linearGradient id="paper" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fffaf0"/>
+      <stop offset="1" stop-color="#f1e6cf"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.68" cy="0.3" r="0.65">
+      <stop offset="0" stop-color="#fff6d8" stop-opacity="0.95"/>
+      <stop offset="1" stop-color="#fff6d8" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="wood" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#7a4b2a"/>
+      <stop offset="1" stop-color="#5a3519"/>
+    </linearGradient>
+  </defs>
+  <!-- frame -->
+  <rect x="16" y="16" width="224" height="224" rx="36" fill="url(#wood)"/>
+  <!-- paper -->
+  <rect x="36" y="36" width="184" height="184" rx="18" fill="url(#paper)"/>
+  <rect x="36" y="36" width="184" height="184" rx="18" fill="url(#glow)"/>
+  <!-- kumiko lattice: 2 vertical, 3 horizontal bars -->
+  <g fill="#6b4024">
+    <rect x="91" y="36" width="10" height="184"/>
+    <rect x="155" y="36" width="10" height="184"/>
+    <rect x="36" y="74" width="184" height="10"/>
+    <rect x="36" y="123" width="184" height="10"/>
+    <rect x="36" y="172" width="184" height="10"/>
+  </g>
+  <!-- one pane slid open a little: the "filtered" gap, accented -->
+  <path d="M165 182 h55 v20 q0 18 -18 18 h-37 z" fill="#2f6f5e"/>
+</svg>

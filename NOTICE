@@ -1,0 +1,22 @@
+Shoji
+Copyright 2026 The Shoji Authors
+
+This product is licensed under the Apache License, Version 2.0 (see LICENSE).
+
+-------------------------------------------------------------------------------
+Third-party software used at runtime (installed separately via pip, not bundled):
+
+  mitmproxy  - MIT License            https://github.com/mitmproxy/mitmproxy
+  dnslib     - BSD 2-Clause License   https://github.com/paulc/dnslib
+  Flask      - BSD 3-Clause License   https://github.com/pallets/flask
+
+Filter lists (downloaded at runtime from their maintainers, not bundled):
+
+  EasyList / EasyPrivacy        https://easylist.to/          (GPLv3 / CC BY-SA 3.0)
+  AdGuard filters               https://github.com/AdguardTeam (GPLv3)
+  uBlock Origin filters         https://github.com/uBlockOrigin/uAssets (GPLv3)
+  AdGuard DNS filter            https://github.com/AdguardTeam/AdGuardSDNSFilter (GPLv3)
+  Peter Lowe's Ad and tracking server list   https://pgl.yoyo.org/adservers/
+
+Each list remains under its own license and is used unmodified. Shoji's own
+built-in rules (rules/builtin_*.txt) are original to this project.

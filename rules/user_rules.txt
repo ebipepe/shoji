@@ -1,0 +1,8 @@
+! ユーザールール（ダッシュボードの「ユーザールール」タブからも編集できます）
+! 書式は Adblock Plus / uBlock Origin 互換です。例:
+!   ||ads.example.com^              ← ドメインごとブロック（DNS でも有効）
+!   ||example.com/banner/*          ← URL パターンでブロック
+!   example.com##.sidebar-ad        ← example.com の .sidebar-ad 要素を非表示
+!   ##.some-ad-class                ← 全サイトで要素を非表示
+!   @@||example.com^$document       ← example.com ではフィルタしない
+! "! category: tracker" と書いた行以降はトラッカーとして集計されます。

@@ -1,0 +1,467 @@
+<!doctype html>
+<!-- SPDX-License-Identifier: Apache-2.0 | Copyright 2026 The Shoji Authors -->
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Shoji</title>
+<link rel="icon" type="image/svg+xml" href="/icon.svg">
+<style>
+:root{color-scheme:light;
+  --bg:#f4f4f2;--surface:#fcfcfb;--surface-2:#f0efec;--border:#e2e1dc;
+  --text:#0b0b0b;--text-2:#52514e;--muted:#7a7974;
+  --accent:#2a78d6;--series-1:#2a78d6;--series-2:#eb6834;
+  --good:#1a7f37;--warn:#b26b00;--bad:#c43c3b;--grid:#e6e5e0}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){color-scheme:dark;
+  --bg:#121211;--surface:#1a1a19;--surface-2:#232321;--border:#30302d;
+  --text:#f0efec;--text-2:#c3c2b7;--muted:#8d8c85;
+  --accent:#3987e5;--series-1:#3987e5;--series-2:#d95926;
+  --good:#4cb86a;--warn:#e0a030;--bad:#e66767;--grid:#2a2a28}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:14px/1.6 system-ui,"Segoe UI","Yu Gothic UI","Hiragino Sans",sans-serif}
+header{display:flex;align-items:center;gap:16px;padding:14px 24px;background:var(--surface);border-bottom:1px solid var(--border);flex-wrap:wrap}
+header h1{font-size:17px;margin:0;letter-spacing:.02em}
+header h1 span{color:var(--muted);font-weight:400;font-size:12px;margin-left:6px}
+.pills{display:flex;gap:6px;flex-wrap:wrap;margin-left:auto}
+.pill{font-size:12px;padding:3px 10px;border-radius:999px;border:1px solid var(--border);color:var(--text-2);background:var(--surface-2)}
+.pill.on::before{content:"● ";color:var(--good)} .pill.off::before{content:"● ";color:var(--bad)}
+nav{display:flex;gap:2px;padding:0 24px;background:var(--surface);border-bottom:1px solid var(--border);overflow-x:auto}
+nav button{border:0;background:none;color:var(--text-2);padding:11px 14px;font:inherit;cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap}
+nav button.active{color:var(--text);border-bottom-color:var(--accent);font-weight:600}
+main{max-width:1180px;margin:0 auto;padding:20px 24px 60px}
+section{display:none} section.active{display:block}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
+.seg{display:inline-flex;border:1px solid var(--border);border-radius:8px;overflow:hidden;background:var(--surface)}
+.seg button{border:0;background:none;padding:6px 14px;font:inherit;color:var(--text-2);cursor:pointer}
+.seg button.active{background:var(--accent);color:#fff}
+.grid{display:grid;gap:12px}
+.kpis{grid-template-columns:repeat(auto-fill,minmax(170px,1fr))}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 18px}
+.kpi .label{color:var(--text-2);font-size:12.5px}
+.kpi .value{font-size:28px;font-weight:650;letter-spacing:-.01em;font-variant-numeric:tabular-nums;line-height:1.3}
+.kpi .sub{color:var(--muted);font-size:12px}
+.kpi .dot{display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:6px;vertical-align:1px}
+h2{font-size:15px;margin:0 0 10px}
+h3{font-size:14px;margin:18px 0 8px}
+.two{grid-template-columns:1fr 1fr} @media (max-width:820px){.two{grid-template-columns:1fr}}
+.chart-wrap{position:relative}
+.legend{display:flex;gap:16px;font-size:12.5px;color:var(--text-2);margin-bottom:6px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+.tip{position:absolute;pointer-events:none;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:12.5px;box-shadow:0 4px 16px rgba(0,0,0,.12);display:none;white-space:nowrap;z-index:5}
+svg text{fill:var(--muted);font-size:11px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--border)}
+th{color:var(--text-2);font-weight:500;font-size:12px}
+td.num{text-align:right;font-variant-numeric:tabular-nums}
+.bar{height:6px;border-radius:3px;background:var(--series-1);opacity:.85}
+.bar.t{background:var(--series-2)}
+.tag{font-size:11px;padding:1px 7px;border-radius:999px;background:var(--surface-2);color:var(--text-2);border:1px solid var(--border)}
+.muted{color:var(--muted)} .small{font-size:12px}
+.toggle-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:10px}
+.toggle{display:flex;gap:12px;align-items:flex-start;padding:12px 14px;border:1px solid var(--border);border-radius:10px;background:var(--surface)}
+.toggle .t{font-weight:600} .toggle .d{color:var(--text-2);font-size:12.5px}
+.switch{position:relative;flex:0 0 38px;height:22px;margin-top:2px}
+.switch input{opacity:0;width:0;height:0}
+.switch span{position:absolute;inset:0;background:var(--border);border-radius:999px;transition:.15s;cursor:pointer}
+.switch span::after{content:"";position:absolute;width:16px;height:16px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.15s}
+.switch input:checked+span{background:var(--accent)} .switch input:checked+span::after{transform:translateX(16px)}
+.btn{border:1px solid var(--border);background:var(--surface);color:var(--text);padding:7px 14px;border-radius:8px;font:inherit;cursor:pointer}
+.btn.pri{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn:disabled{opacity:.5;cursor:default}
+input[type=text],textarea,select{font:inherit;color:var(--text);background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:7px 10px}
+textarea{width:100%;min-height:340px;font-family:ui-monospace,Consolas,monospace;font-size:12.5px}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.chip{display:inline-flex;gap:6px;align-items:center;padding:4px 6px 4px 10px;border-radius:999px;background:var(--surface-2);border:1px solid var(--border);font-size:12.5px}
+.chip button{border:0;background:none;color:var(--muted);cursor:pointer;font-size:14px;line-height:1}
+.step{display:flex;gap:14px;padding:14px 0;border-bottom:1px solid var(--border)}
+.step .n{flex:0 0 28px;height:28px;border-radius:50%;background:var(--surface-2);border:1px solid var(--border);display:grid;place-items:center;font-weight:600}
+.ok{color:var(--good)} .ng{color:var(--bad)}
+code{font-family:ui-monospace,Consolas,monospace;font-size:12.5px;background:var(--surface-2);padding:1px 5px;border-radius:4px}
+#toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--text);color:var(--bg);padding:8px 16px;border-radius:8px;display:none;font-size:13px}
+.log td{font-size:12px} .log td.d{color:var(--muted);max-width:420px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+</style>
+</head>
+<body>
+<header>
+  <h1><img src="/icon.svg" alt="" width="22" height="22" style="vertical-align:-4px;margin-right:8px">Shoji<span id="ver"></span></h1>
+  <div class="pills" id="pills"></div>
+</header>
+<nav id="tabs">
+  <button data-tab="stats" class="active">統計レポート</button>
+  <button data-tab="settings">機能設定</button>
+  <button data-tab="stealth">ステルスモード</button>
+  <button data-tab="allow">許可リスト</button>
+  <button data-tab="filters">フィルタ</button>
+  <button data-tab="setup">セットアップ</button>
+</nav>
+<main>
+<!-- ================= 統計 ================= -->
+<section id="stats" class="active">
+  <div class="row">
+    <div class="seg" id="period">
+      <button data-d="1" class="active">今日</button><button data-d="7">7日間</button><button data-d="30">30日間</button><button data-d="0">全期間</button>
+    </div>
+    <span class="muted small" id="updated"></span>
+    <span style="flex:1"></span>
+    <a class="btn" id="csv" href="/api/report.csv?days=30">CSV 出力</a>
+    <button class="btn" id="reset">統計をリセット</button>
+  </div>
+  <div class="grid kpis" id="kpis"></div>
+  <div class="grid two" style="margin-top:12px">
+    <div class="card">
+      <h2 id="chart-title">ブロック数の推移</h2>
+      <div class="legend"><span><i style="background:var(--series-1)"></i>広告</span><span><i style="background:var(--series-2)"></i>トラッカー</span></div>
+      <div class="chart-wrap" id="chart"></div>
+    </div>
+    <div class="card">
+      <h2>機能別の内訳</h2>
+      <table id="breakdown"></table>
+    </div>
+  </div>
+  <div class="grid two" style="margin-top:12px">
+    <div class="card"><h2>ブロックした広告ドメイン</h2><table id="top-ad"></table></div>
+    <div class="card"><h2>ブロックしたトラッカードメイン</h2><table id="top-tracker"></table></div>
+  </div>
+  <div class="card" style="margin-top:12px">
+    <h2>最近のブロック</h2>
+    <table class="log" id="recent"></table>
+  </div>
+  <p class="muted small">※ 通信量・短縮時間は、ブロックしたリソースの種類ごとの平均サイズから算出した推定値です。</p>
+</section>
+
+<!-- ================= 機能設定 ================= -->
+<section id="settings">
+  <div class="toggle-list" id="feature-toggles"></div>
+</section>
+
+<!-- ================= ステルス ================= -->
+<section id="stealth">
+  <p class="muted">アクセス解析・広告配信システムがあなたを追跡するために使う情報（検索クエリ、追跡パラメーター、Cookie、ブラウザ・OS情報、画面情報など）を送らないようにします。</p>
+  <div class="toggle-list" id="stealth-toggles"></div>
+  <div class="card" style="margin-top:12px">
+    <label>1stパーティ Cookie の最大寿命（時間, 0=制限なし）
+      <input type="text" id="cookie-hours" style="width:90px;margin-left:8px">
+    </label>
+    <button class="btn" id="cookie-save" style="margin-left:6px">保存</button>
+  </div>
+</section>
+
+<!-- ================= 許可リスト ================= -->
+<section id="allow">
+  <div class="grid two">
+    <div class="card">
+      <h2>許可リスト（フィルタしないサイト）</h2>
+      <p class="muted small">表示が崩れるサイトや、広告を表示して応援したいサイトを追加します。</p>
+      <div class="row"><input type="text" id="wl-input" placeholder="example.com" style="flex:1"><button class="btn pri" id="wl-add">追加</button></div>
+      <div class="chips" id="wl"></div>
+    </div>
+    <div class="card">
+      <h2>HTTPS を復号しないホスト</h2>
+      <p class="muted small">銀行・決済・証明書ピンニングを使うアプリ等。ドメイン単位のブロックは引き続き有効です。</p>
+      <div class="row"><input type="text" id="ex-input" placeholder="bank.example.jp" style="flex:1"><button class="btn pri" id="ex-add">追加</button></div>
+      <div class="chips" id="ex"></div>
+      <h3>自動で除外されたホスト <button class="btn" id="pt-clear" style="font-size:12px;padding:3px 10px">クリア</button></h3>
+      <p class="muted small">証明書を受け付けなかったため自動的に HTTPS 復号の対象外にしたアプリ・ホストです（他のブラウザでのフィルタリングには影響しません）。</p>
+      <div class="chips" id="pt"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= フィルタ ================= -->
+<section id="filters">
+  <div class="card">
+    <div class="row"><h2 style="margin:0">フィルタリスト</h2><span style="flex:1"></span><span class="muted small" id="rule-summary"></span><button class="btn pri" id="update-lists">今すぐ更新</button></div>
+    <table id="lists"></table>
+  </div>
+  <div class="grid two" style="margin-top:12px">
+    <div class="card">
+      <h2>ユーザールール</h2>
+      <textarea id="user-rules" spellcheck="false"></textarea>
+      <div class="row" style="margin-top:8px"><button class="btn pri" id="save-rules">保存して反映</button></div>
+    </div>
+    <div class="card">
+      <h2>URL チェック</h2>
+      <p class="muted small">URL がブロックされるか、どのルールに一致したかを確認できます。</p>
+      <input type="text" id="chk-url" placeholder="https://ads.example.com/banner.js" style="width:100%">
+      <div class="row" style="margin-top:8px">
+        <input type="text" id="chk-page" placeholder="表示中のページ URL（任意）" style="flex:1">
+        <select id="chk-type"><option value="script">script</option><option value="image">image</option><option value="sub_frame">iframe</option><option value="xmlhttprequest">xhr</option><option value="document">document</option><option value="other">other</option></select>
+        <button class="btn" id="chk-go">チェック</button>
+      </div>
+      <pre id="chk-out" class="small" style="white-space:pre-wrap"></pre>
+    </div>
+  </div>
+</section>
+
+<!-- ================= セットアップ ================= -->
+<section id="setup">
+  <div class="card">
+    <div class="step"><div class="n">1</div><div style="flex:1">
+      <b>HTTPS フィルタリング用の証明書をインストール</b> <span id="st-cert"></span>
+      <p class="muted small">YouTube の動画広告除去・要素非表示・ステルスモードなど、HTTPS サイトの中身を処理するのに必要です。この PC 専用に生成された証明書で、外部には送信されません。</p>
+      <button class="btn pri" id="do-cert">証明書をインストール</button> <a class="btn" href="/cert">証明書をダウンロード</a>
+      <p class="muted small">Firefox は独自の証明書ストアを使うため、設定 → プライバシーとセキュリティ → 証明書 → 「証明書を表示」→ 認証局証明書 → インポートから登録してください。</p>
+    </div></div>
+    <div class="step"><div class="n">2</div><div style="flex:1">
+      <b>Windows のプロキシ設定</b> <span id="st-proxy"></span>
+      <p class="muted small">ブラウザと、システムのプロキシ設定に従うアプリの通信をフィルタします。終了時には元の設定に戻ります。</p>
+      <button class="btn pri" id="proxy-on">有効にする</button> <button class="btn" id="proxy-off">元に戻す</button>
+    </div></div>
+    <div class="step"><div class="n">3</div><div style="flex:1">
+      <b>DNS フィルタリング（アプリ内広告）</b> <span id="st-dns"></span>
+      <p class="muted small">PC の DNS を本ソフトに向け、プロキシを使わないアプリの広告・トラッカーも名前解決の段階で止めます。管理者権限が必要なので <code>set_dns.bat</code> を右クリック →「管理者として実行」してください。元に戻すときは <code>reset_dns.bat</code>。</p>
+      <button class="btn" id="dns-on">DNS を設定（管理者実行時のみ）</button> <button class="btn" id="dns-off">DNS を元に戻す</button>
+    </div></div>
+    <div class="step"><div class="n">4</div><div style="flex:1">
+      <b>スマホ・タブレットのアプリ内広告もブロックする（任意）</b>
+      <p class="muted small">設定タブではなく <code>data\config.json</code> の <code>dns.listen_host</code> と <code>proxy.listen_host</code> を <code>0.0.0.0</code> にして再起動し、スマホの Wi-Fi 設定で DNS をこの PC の IP アドレスにします。HTTPS フィルタリングも使う場合は Wi-Fi のプロキシをこの PC の <span id="proxy-port"></span> に設定し、ブラウザで <code>http://shoji.blocker/cert</code> を開いて証明書をインストールします。</p>
+    </div></div>
+  </div>
+</section>
+</main>
+<div id="toast"></div>
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fmt = n => (n || 0).toLocaleString('ja-JP');
+let CFG = null, DAYS = 1;
+
+function toast(msg) { const t = $('#toast'); t.textContent = msg; t.style.display = 'block'; clearTimeout(t._t); t._t = setTimeout(() => t.style.display = 'none', 2600); }
+async function api(path, body) {
+  const r = await fetch(path, body === undefined ? {} : {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)});
+  return r.json();
+}
+function bytes(b) {
+  if (b >= 1e9) return (b / 1e9).toFixed(2) + ' GB';
+  if (b >= 1e6) return (b / 1e6).toFixed(1) + ' MB';
+  return Math.round(b / 1e3) + ' KB';
+}
+function dur(ms) {
+  const s = ms / 1000;
+  if (s >= 3600) return (s / 3600).toFixed(1) + ' 時間';
+  if (s >= 60) return (s / 60).toFixed(1) + ' 分';
+  return s.toFixed(1) + ' 秒';
+}
+
+/* ---------- タブ ---------- */
+document.querySelectorAll('#tabs button').forEach(b => b.onclick = () => {
+  document.querySelectorAll('#tabs button').forEach(x => x.classList.toggle('active', x === b));
+  document.querySelectorAll('section').forEach(s => s.classList.toggle('active', s.id === b.dataset.tab));
+  if (b.dataset.tab === 'filters') loadFilters();
+});
+
+/* ---------- 状態 ---------- */
+async function loadStatus() {
+  const s = await api('/api/status');
+  $('#ver').textContent = 'v' + s.version;
+  const st = s.status || {};
+  const pill = (on, label) => `<span class="pill ${on ? 'on' : 'off'}">${label}</span>`;
+  $('#pills').innerHTML = pill(st.proxy === 'running', 'プロキシ ' + s.proxy_addr) +
+    pill(s.https_ready, s.https_ready ? 'HTTPS フィルタ' : 'HTTPS フィルタ停止中') +
+    pill(st.dns === 'running', 'DNS ' + s.dns_addr) +
+    pill(s.system_proxy, 'システムプロキシ') + pill(s.cert_installed, '証明書');
+  const mark = ok => ok ? '<span class="ok">✔ 設定済み</span>' : '<span class="ng">未設定</span>';
+  $('#st-cert').innerHTML = mark(s.cert_installed) + (s.https_ready ? '' : ` <span class="ng">— ${esc(s.https_problem || 'HTTPS フィルタリング停止中')}</span>`);
+  $('#st-proxy').innerHTML = mark(s.system_proxy);
+  $('#st-dns').innerHTML = st.dns === 'running' ? '<span class="ok">DNS サーバー稼働中</span>' : '<span class="ng">DNS サーバー停止中（' + esc(st.dns) + '）</span>';
+  $('#proxy-port').textContent = s.proxy_addr.split(':').pop() + ' 番ポート';
+  const pts = (s.untrusting_apps || []).map(a => `<span class="chip">アプリ: ${esc(a)}</span>`).concat(s.passthrough_hosts.map(h => `<span class="chip">${esc(h)}</span>`));
+  $('#pt').innerHTML = pts.length ? pts.join('') : '<span class="muted small">なし</span>';
+  if (st.lists && st.lists.network_rules !== undefined) $('#rule-summary').textContent =
+    `DNS ${fmt(st.lists.dns_domains)} ドメイン / URL ${fmt(st.lists.network_rules)} / 要素非表示 ${fmt(st.lists.cosmetic_generic + st.lists.cosmetic_specific)} ルール` + (st.updating ? '（更新中…）' : '');
+}
+
+/* ---------- 統計 ---------- */
+document.querySelectorAll('#period button').forEach(b => b.onclick = () => {
+  DAYS = +b.dataset.d;
+  document.querySelectorAll('#period button').forEach(x => x.classList.toggle('active', x === b));
+  $('#csv').href = '/api/report.csv?days=' + DAYS;
+  loadReport();
+});
+$('#reset').onclick = async () => { if (confirm('統計をすべて削除しますか？')) { await api('/api/stats/reset', {}); loadReport(); } };
+
+const CAT_LABEL = {ad: '広告', tracker: 'トラッカー', popup: 'ポップアップ', youtube: '動画広告', reinserted: '再挿入広告', cosmetic: '要素非表示', amp: 'AMP 無効化', stealth_param: '追跡パラメーター除去', stealth_cookie: 'Cookie 遮断', stealth_header: '追跡ヘッダー除去'};
+
+async function loadReport() {
+  const r = await api('/api/report?days=' + DAYS);
+  const T = k => (r.totals[k] || {}).count || 0;
+  const src = (k, s) => ((r.by_source[k] || {})[s] || 0);
+  const kpi = (label, value, sub, color) => `<div class="card kpi"><div class="label">${color ? `<span class="dot" style="background:${color}"></span>` : ''}${label}</div><div class="value">${value}</div><div class="sub">${sub || '&nbsp;'}</div></div>`;
+  $('#kpis').innerHTML =
+    kpi('ブロックした広告', fmt(T('ad')), `ブラウザ ${fmt(src('ad','proxy'))} / DNS ${fmt(src('ad','dns'))}`, 'var(--series-1)') +
+    kpi('ブロックしたトラッカー', fmt(T('tracker')), `ブラウザ ${fmt(src('tracker','proxy'))} / DNS ${fmt(src('tracker','dns'))}`, 'var(--series-2)') +
+    kpi('節約した通信量', bytes(r.saved_bytes), '推定値') +
+    kpi('短縮した読み込み時間', dur(r.saved_ms), '推定値') +
+    kpi('動画広告', fmt(T('youtube')), 'YouTube 等') +
+    kpi('ポップアップ', fmt(T('popup')), '新しいウィンドウ・オーバーレイ') +
+    kpi('ブロック率', (r.block_ratio * 100).toFixed(1) + '%', `全 ${fmt(T('request') + T('dns_query'))} 件の通信のうち`);
+  // 内訳
+  $('#breakdown').innerHTML = '<tr><th>機能</th><th class="num">件数</th></tr>' +
+    Object.keys(CAT_LABEL).map(k => `<tr><td>${CAT_LABEL[k]}</td><td class="num">${fmt(T(k))}</td></tr>`).join('');
+  // 上位ドメイン
+  const topTable = (rows, cls) => {
+    if (!rows.length) return '<tr><td class="muted">まだデータがありません</td></tr>';
+    const max = rows[0].count;
+    return rows.map(x => `<tr><td style="width:46%">${esc(x.domain)}</td><td><div class="bar ${cls}" style="width:${Math.max(3, x.count / max * 100)}%"></div></td><td class="num" style="width:70px">${fmt(x.count)}</td></tr>`).join('');
+  };
+  $('#top-ad').innerHTML = topTable(r.top.ad || [], '');
+  $('#top-tracker').innerHTML = topTable(r.top.tracker || [], 't');
+  // 最近
+  $('#recent').innerHTML = '<tr><th>時刻</th><th>種類</th><th>経路</th><th>ドメイン</th><th>詳細</th></tr>' + (r.recent.map(x =>
+    `<tr><td>${new Date(x.ts * 1000).toLocaleTimeString('ja-JP')}</td><td><span class="tag">${CAT_LABEL[x.category] || x.category}</span></td><td>${{proxy: 'ブラウザ', dns: 'DNS', page: 'ページ'}[x.source] || x.source}</td><td>${esc(x.domain)}</td><td class="d" title="${esc(x.detail)}">${esc(x.detail)}</td></tr>`).join('') || '<tr><td class="muted" colspan="5">まだデータがありません</td></tr>');
+  // グラフ
+  let points;
+  if (DAYS === 1) {
+    $('#chart-title').textContent = '今日の時間別ブロック数';
+    points = Array.from({length: 24}, (_, h) => { const k = String(h).padStart(2, '0'); const v = r.hourly[k] || {}; return {label: h + '時', ad: v.ad || 0, tracker: v.tracker || 0}; });
+  } else {
+    $('#chart-title').textContent = '日別ブロック数';
+    const days = DAYS || Math.max(7, Object.keys(r.daily).length);
+    points = [];
+    for (let i = days - 1; i >= 0; i--) {
+      const d = new Date(); d.setDate(d.getDate() - i);
+      const key = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+      const v = r.daily[key] || {};
+      points.push({label: (d.getMonth() + 1) + '/' + d.getDate(), ad: v.ad || 0, tracker: v.tracker || 0});
+    }
+  }
+  drawChart(points);
+  $('#updated').textContent = new Date().toLocaleTimeString('ja-JP') + ' 更新';
+}
+
+function drawChart(points) {
+  const el = $('#chart');
+  const W = el.clientWidth || 520, H = 220, L = 44, B = 24, T = 8, R = 6;
+  const max = Math.max(1, ...points.map(p => p.ad + p.tracker));
+  const nice = (() => { const p = Math.pow(10, Math.floor(Math.log10(max))); return Math.ceil(max / p) * p; })();
+  const n = points.length, slot = (W - L - R) / n, bw = Math.max(2, Math.min(28, slot * 0.62));
+  const y = v => T + (H - T - B) * (1 - v / nice);
+  let s = `<svg width="${W}" height="${H}" role="img" aria-label="ブロック数のグラフ">`;
+  for (let i = 0; i <= 4; i++) {
+    const v = nice * i / 4, yy = y(v);
+    s += `<line x1="${L}" x2="${W - R}" y1="${yy}" y2="${yy}" stroke="var(--grid)"/><text x="${L - 6}" y="${yy + 4}" text-anchor="end">${fmt(Math.round(v))}</text>`;
+  }
+  const every = Math.ceil(n / 12);
+  points.forEach((p, i) => {
+    const x = L + slot * i + (slot - bw) / 2;
+    const ya = y(p.ad), yt = y(p.ad + p.tracker);
+    const r = Math.min(4, bw / 2);
+    // 下: 広告, 上: トラッカー（区切りに 2px の隙間）
+    if (p.ad) s += `<rect x="${x}" y="${ya}" width="${bw}" height="${y(0) - ya}" fill="var(--series-1)" rx="${p.tracker ? 0 : r}"/>`;
+    if (p.tracker) s += `<rect x="${x}" y="${yt}" width="${bw}" height="${Math.max(0, ya - yt - (p.ad ? 2 : 0))}" fill="var(--series-2)" rx="${r}"/>`;
+    s += `<rect x="${L + slot * i}" y="${T}" width="${slot}" height="${H - T - B}" fill="transparent" data-i="${i}"/>`;
+    if (i % every === 0) s += `<text x="${L + slot * i + slot / 2}" y="${H - 6}" text-anchor="middle">${p.label}</text>`;
+  });
+  s += '</svg><div class="tip"></div>';
+  el.innerHTML = s;
+  const tip = el.querySelector('.tip');
+  el.querySelectorAll('rect[data-i]').forEach(rc => {
+    rc.onmousemove = e => {
+      const p = points[+rc.dataset.i];
+      tip.innerHTML = `<b>${p.label}</b><br><span style="color:var(--series-1)">■</span> 広告 ${fmt(p.ad)}<br><span style="color:var(--series-2)">■</span> トラッカー ${fmt(p.tracker)}`;
+      tip.style.display = 'block';
+      const bx = el.getBoundingClientRect();
+      let left = e.clientX - bx.left + 12; if (left > W - 150) left -= 170;
+      tip.style.left = left + 'px'; tip.style.top = (e.clientY - bx.top - 10) + 'px';
+    };
+    rc.onmouseleave = () => tip.style.display = 'none';
+  });
+}
+
+/* ---------- 設定 ---------- */
+const FEATURES = [
+  ['block_ads', 'ブラウザ広告をブロック', 'バナー・テキスト広告などの配信元への通信を止めます。'],
+  ['youtube_ads', '動画広告をブロック', 'YouTube の再生前・途中の広告、フィード内の広告を除去します。'],
+  ['block_trackers', 'トラッカーをブロック', 'アクセス解析・行動追跡スクリプトやビーコンを止めます。'],
+  ['dns_filtering', 'DNS フィルタリング', 'アプリ内広告を含め、広告ドメインの名前解決を止めます。'],
+  ['cname_uncloaking', 'CNAME 偽装トラッカーの検出', 'サイトのサブドメインに見せかけたトラッカーを DNS 応答から見破ります。'],
+  ['https_filtering', 'HTTPS フィルタリング', '暗号化された通信の中身を PC 内で処理し、細かいフィルタを適用します。'],
+  ['cosmetic', '広告枠の非表示', '広告の入っていた要素をページから隠します。'],
+  ['collapse_space', '広告削除後のスペース調整', '広告が消えた後に残る空白や「広告」ラベルだけの枠を畳みます。'],
+  ['anti_reinsertion', '再挿入された広告をブロック', '一度消した広告がスクリプトで再表示される場合も除去します。'],
+  ['block_popups', 'ポップアップを非表示', '勝手に開く新しいウィンドウ・ポップアンダー・クリックを横取りする透明な広告を止めます。'],
+  ['disable_amp', 'AMP を無効化', 'Google の AMP ページを元のサイトの通常ページで開きます。'],
+  ['hide_affiliate_banners', 'アフィリエイトのバナーを隠す', 'サイトが自前で貼った Amazon・楽天等の宣伝バナー画像も隠します（文字リンクや記事中の商品紹介は残します）。'],
+];
+const STEALTH = [
+  ['enabled', 'ステルスモード', '以下のプライバシー保護機能をまとめて有効にします。'],
+  ['strip_tracking_params', '追跡パラメーターを除去', 'URL に付く utm_*・fbclid・gclid などを取り除きます。'],
+  ['hide_search_queries', '検索クエリを隠す', '検索結果から移動した先のサイトに、検索した語句を渡しません。'],
+  ['trim_referer', 'リファラーを最小化', '他サイトに送る「どのページから来たか」をドメインだけにします。'],
+  ['block_third_party_cookies', 'トラッカーの Cookie を遮断', '広告・解析ドメインとの Cookie のやり取りを止めます。'],
+  ['send_dnt', 'Do Not Track / GPC を送信', '追跡拒否の意思表示ヘッダーを送ります。'],
+  ['strip_client_hints', 'OS・端末の詳細情報を隠す', 'OS バージョン・機種名・正確なブラウザバージョン (Client Hints) を送りません。'],
+  ['remove_x_client_data', 'X-Client-Data を除去', 'Chrome が Google に送る識別用ヘッダーを取り除きます。'],
+  ['hide_user_agent', 'User-Agent を汎用化', 'ブラウザ・OS の識別文字列を一般的な値にします（一部サイトで表示が変わる可能性）。'],
+  ['block_webrtc_leak', 'WebRTC の IP 漏えい防止', 'ローカル IP アドレスがページに知られるのを防ぎます。'],
+  ['fingerprint_protection', '画面・ハードウェア解析の防止', '画面解像度・CPU数・Canvas 等によるブラウザの識別（フィンガープリント）を妨害します。'],
+];
+function toggles(container, defs, section) {
+  $(container).innerHTML = defs.map(([k, t, d]) => `<label class="toggle"><span class="switch"><input type="checkbox" data-k="${k}" ${CFG[section][k] ? 'checked' : ''}><span></span></span><span><div class="t">${t}</div><div class="d">${d}</div></span></label>`).join('');
+  $(container).querySelectorAll('input').forEach(i => i.onchange = async () => {
+    const patch = {}; patch[section] = {}; patch[section][i.dataset.k] = i.checked;
+    const r = await api('/api/config', patch); CFG = r.config; toast('保存しました（すぐに反映されます）');
+  });
+}
+function chips(container, list, key) {
+  $(container).innerHTML = list.length ? list.map((h, i) => `<span class="chip">${esc(h)}<button data-i="${i}" title="削除">×</button></span>`).join('') : '<span class="muted small">なし</span>';
+  $(container).querySelectorAll('button').forEach(b => b.onclick = async () => {
+    const next = CFG[key].filter((_, i) => i !== +b.dataset.i);
+    const r = await api('/api/config', {[key]: next}); CFG = r.config; renderConfig();
+  });
+}
+function addTo(inputSel, key) {
+  const v = $(inputSel).value.trim().replace(/^https?:\/\//, '').replace(/\/.*$/, '').toLowerCase();
+  if (!v) return;
+  if (!CFG[key].includes(v)) api('/api/config', {[key]: CFG[key].concat([v])}).then(r => { CFG = r.config; renderConfig(); toast(v + ' を追加しました'); });
+  $(inputSel).value = '';
+}
+$('#wl-add').onclick = () => addTo('#wl-input', 'whitelist');
+$('#ex-add').onclick = () => addTo('#ex-input', 'https_exclusions');
+$('#wl-input').onkeydown = e => e.key === 'Enter' && addTo('#wl-input', 'whitelist');
+$('#ex-input').onkeydown = e => e.key === 'Enter' && addTo('#ex-input', 'https_exclusions');
+$('#cookie-save').onclick = async () => { const r = await api('/api/config', {stealth: {first_party_cookie_max_age_hours: +$('#cookie-hours').value || 0}}); CFG = r.config; toast('保存しました'); };
+
+function renderConfig() {
+  toggles('#feature-toggles', FEATURES, 'features');
+  toggles('#stealth-toggles', STEALTH, 'stealth');
+  chips('#wl', CFG.whitelist, 'whitelist');
+  chips('#ex', CFG.https_exclusions, 'https_exclusions');
+  $('#cookie-hours').value = CFG.stealth.first_party_cookie_max_age_hours || 0;
+}
+async function loadConfig() { CFG = await api('/api/config'); renderConfig(); }
+
+/* ---------- フィルタ ---------- */
+async function loadFilters() {
+  const r = await api('/api/lists');
+  $('#lists').innerHTML = '<tr><th>有効</th><th>名前</th><th>分類</th><th>最終更新</th><th class="num">サイズ</th></tr>' + r.lists.map((l, i) =>
+    `<tr><td><label class="switch"><input type="checkbox" data-i="${i}" ${l.enabled ? 'checked' : ''}><span></span></label></td><td>${esc(l.name)}</td><td><span class="tag">${l.category === 'tracker' ? 'トラッカー' : '広告'}</span></td><td>${l.updated ? new Date(l.updated * 1000).toLocaleString('ja-JP') : '<span class="muted">未取得</span>'}</td><td class="num">${l.size ? Math.round(l.size / 1024).toLocaleString() + ' KB' : '-'}</td></tr>`).join('');
+  $('#lists').querySelectorAll('input').forEach(inp => inp.onchange = async () => {
+    const fl = CFG.filter_lists.map((l, i) => i === +inp.dataset.i ? Object.assign({}, l, {enabled: inp.checked}) : l);
+    const res = await api('/api/config', {filter_lists: fl}); CFG = res.config; toast('ルールを再読み込みしています…');
+  });
+  const u = await api('/api/user_rules'); $('#user-rules').value = u.text;
+}
+$('#update-lists').onclick = async () => { await api('/api/lists/update', {}); toast('フィルタリストを更新しています…'); setTimeout(loadFilters, 8000); };
+$('#save-rules').onclick = async () => { await api('/api/user_rules', {text: $('#user-rules').value}); toast('保存しました。ルールを再読み込みしています…'); };
+$('#chk-go').onclick = async () => {
+  const q = new URLSearchParams({url: $('#chk-url').value.trim(), page: $('#chk-page').value.trim(), type: $('#chk-type').value});
+  const r = await api('/api/check?' + q);
+  $('#chk-out').textContent = r.blocked ? `🛑 ブロックされます（${r.category === 'tracker' ? 'トラッカー' : '広告'}）\nルール: ${r.rule}` : '✅ ブロックされません';
+  if (r.dns) $('#chk-out').textContent += `\nDNS: ドメインごとブロック対象（${r.dns}）`;
+};
+
+/* ---------- セットアップ ---------- */
+$('#pt-clear').onclick = async () => { await api('/api/passthrough/clear', {}); toast('クリアしました'); loadStatus(); };
+$('#do-cert').onclick = async () => { const r = await api('/api/system/cert', {}); toast(r.message); loadStatus(); };
+$('#proxy-on').onclick = async () => { const r = await api('/api/system/proxy', {on: true}); toast(r.ok ? 'プロキシを設定しました' : 'Windows 以外では手動で設定してください'); loadStatus(); };
+$('#proxy-off').onclick = async () => { await api('/api/system/proxy', {on: false}); toast('元のプロキシ設定に戻しました'); loadStatus(); };
+$('#dns-on').onclick = async () => { const r = await api('/api/system/dns', {on: true}); toast(r.message); };
+$('#dns-off').onclick = async () => { const r = await api('/api/system/dns', {on: false}); toast(r.message); };
+
+loadConfig(); loadStatus(); loadReport();
+setInterval(() => { loadStatus(); if ($('#stats').classList.contains('active')) loadReport(); }, 5000);
+window.addEventListener('resize', () => loadReport());
+</script>
+</body>
+</html>

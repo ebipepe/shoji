@@ -1,0 +1,13 @@
+# Runtime data (settings, statistics, downloaded filter lists, and the per-machine CA private key)
+data/
+# Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
