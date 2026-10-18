@@ -67,7 +67,9 @@ jobs:
           Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue
           if (-not $ok) {
             # Surface the log as annotations too (visible on the run page and through the API)
-            $log | Select-Object -Last 40 | ForEach-Object { Write-Output "::error title=shoji.log::$_" }
+            # (one annotation; GitHub keeps only 10 per step, and %0A is an escaped newline)
+            $msg = ($log | Select-Object -Last 60) -join '%0A'
+            Write-Output "::error title=shoji.log::$msg"
             throw "Shoji.exe did not start"
           }
 
