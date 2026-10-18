@@ -63,31 +63,39 @@ Windows' trust store, so the proxy can read and filter encrypted traffic locally
 certificates (Slack, ChatGPT, Discord, …) are detected automatically and passed through untouched.
 Read [SECURITY.md](SECURITY.md) before using it.
 
-## Requirements
-
-- Windows 10 or 11
-- [Python 3.12+](https://www.python.org/downloads/) (tick **"Add python.exe to PATH"** during setup)
-
 ## Install
+
+### Windows app (recommended — no Python needed)
+
+1. Download **`Shoji-<version>-windows-x64.zip`** from the [latest release](../../releases/latest) and unzip it anywhere.
+2. Run **`Shoji.exe`**. A shōji icon appears in the system tray and the dashboard opens at <http://127.0.0.1:8765>.
+
+The executable is not code-signed yet, so Windows SmartScreen may say *"Windows protected your PC"*.
+Click **More info → Run anyway**. You can verify the download with the `.sha256` file on the release page.
+
+### From source (Windows 10/11, [Python 3.12+](https://www.python.org/downloads/))
 
 ```bat
 git clone https://github.com/ebipepe/shoji.git
 cd shoji
 install.bat
+start.bat
 ```
 
-Or download the ZIP from the [Releases](../../releases) page and run `install.bat`.
+`start.bat` runs Shoji in the tray without a console window. Use `start_console.bat` to see the log while debugging.
 
 ## Use
 
-1. Run **`start.bat`**. The dashboard opens at <http://127.0.0.1:8765>.
-2. On first run Windows asks whether to trust **"Shoji Local Filtering CA (this PC only)"**. Choose **Yes**,
+1. On first run Windows asks whether to trust **"Shoji Local Filtering CA (this PC only)"**. Choose **Yes**,
    then restart your browser.
+2. Right-click the **tray icon** to pause filtering, open the dashboard, turn on **"Start with Windows"**, or quit.
 3. *(Optional, for in-app ads)* Right-click **`set_dns.bat` → Run as administrator** to point Windows DNS at Shoji.
    Undo it with `reset_dns.bat`.
 
-While Shoji runs, the Windows proxy setting points at it. Press `Ctrl+C` to stop and the original
-settings are restored. If Shoji ever crashes and your connection breaks, run **`restore_network.bat`**.
+Shoji points Windows at itself with a **proxy auto-config (PAC) script**: if Shoji stops or crashes,
+browsers fall back to a direct connection automatically, so you never lose internet access. A small watchdog
+also restores your original settings if Shoji exits unexpectedly (`restore_network.bat` remains as a last resort).
+Settings, statistics and logs live in `data\` (source) or `%LOCALAPPDATA%\Shoji` (Windows app).
 
 Firefox keeps its own certificate store. Shoji turns on Firefox's *use Windows certificates*
 setting automatically. Restart Firefox once after the first run.
@@ -143,3 +151,5 @@ Filter lists are downloaded from their maintainers at runtime and remain under t
 ## License
 
 [Apache License 2.0](LICENSE). Copyright 2026 The Shoji Authors.
+See [docs/LICENSING.md](docs/LICENSING.md) for what this means for contributors and redistributors,
+and how the Windows executable handles bundled third-party licenses.

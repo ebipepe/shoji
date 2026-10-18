@@ -93,7 +93,7 @@ class ShojiAddon:
         if host == MAGIC_HOST:
             return False
         cfg = self.ctx.cfg
-        if not cfg["features"].get("https_filtering", True):
+        if self.ctx.paused or not cfg["features"].get("https_filtering", True):
             return True
         if not self.ctx.https_ready:
             # 証明書がブラウザに信頼されていない状態で復号すると、全サイトが証明書エラーになる
@@ -130,7 +130,7 @@ class ShojiAddon:
     # ------------------------------------------------------------ CONNECT / TLS
     def http_connect(self, flow: http.HTTPFlow) -> None:
         host = flow.request.host.lower()
-        if host == MAGIC_HOST or not self._passthrough(host) or self.ctx.is_allowed(host):
+        if host == MAGIC_HOST or self.ctx.paused or not self._passthrough(host) or self.ctx.is_allowed(host):
             return
         # 復号しないホストでも、ドメイン単位の広告/トラッカーはここで遮断する
         cat = self.engine.dns_lookup(host)
@@ -208,7 +208,7 @@ class ShojiAddon:
             page_host = _host_of(req.headers.get("origin", "")) or _host_of(req.headers.get("referer", ""))
         meta = {"rtype": rtype, "page_host": page_host}
         flow.metadata["kk"] = meta
-        if self.ctx.is_allowed(host, page_host):
+        if self.ctx.paused or self.ctx.is_allowed(host, page_host):
             meta["allowed"] = True
             return
         if page_host and "document" in self._page_flags(

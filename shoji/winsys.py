@@ -51,7 +51,7 @@ def _refresh_wininet() -> None:
 # ------------------------------------------------------------------ プロキシ
 def get_system_proxy() -> dict:
     if not IS_WIN:
-        return {"enabled": False, "server": "", "bypass": ""}
+        return {"enabled": False, "server": "", "bypass": "", "pac": ""}
     import winreg
     with winreg.OpenKey(winreg.HKEY_CURRENT_USER, _INET_KEY) as k:
         def q(name, default):
@@ -60,25 +60,55 @@ def get_system_proxy() -> dict:
             except OSError:
                 return default
         return {"enabled": bool(q("ProxyEnable", 0)), "server": q("ProxyServer", ""),
-                "bypass": q("ProxyOverride", "")}
+                "bypass": q("ProxyOverride", ""), "pac": q("AutoConfigURL", "")}
 
 
-def set_system_proxy(host: str, port: int) -> bool:
+def pac_script(host: str, port: int) -> str:
+    """自動構成スクリプト（PAC）。Shoji が止まっていればブラウザは自動で直接接続に戻る。"""
+    return f"""function FindProxyForURL(url, host) {{
+  if (isPlainHostName(host) || host === "localhost" || shExpMatch(host, "*.localhost") ||
+      shExpMatch(host, "127.*") || shExpMatch(host, "10.*") || shExpMatch(host, "192.168.*") ||
+      /^172\\.(1[6-9]|2[0-9]|3[01])\\./.test(host) ||
+      shExpMatch(host, "169.254.*") || host === "[::1]") {{
+    return "DIRECT";
+  }}
+  return "PROXY {host}:{port}; DIRECT";
+}}
+"""
+
+
+def set_system_proxy(host: str, port: int, mode: str = "static", pac_url: str = "") -> bool:
+    """Windows のプロキシ設定を Shoji に向ける。変更前の設定は保存し、restore で戻す。
+    mode="pac": 自動構成スクリプトを使う（推奨。Shoji が落ちてもネットが切れない）
+    mode="static": 固定のプロキシ設定"""
     if not IS_WIN:
         return False
     import winreg
     saved = _load_saved()
     cur = get_system_proxy()
     target = f"{host}:{port}"
-    if "proxy" not in saved and cur.get("server") != target:
+    if "proxy" not in saved and cur.get("server") != target and cur.get("pac") != pac_url:
         saved["proxy"] = cur
         _save(saved)
     with winreg.OpenKey(winreg.HKEY_CURRENT_USER, _INET_KEY, 0, winreg.KEY_SET_VALUE) as k:
-        winreg.SetValueEx(k, "ProxyEnable", 0, winreg.REG_DWORD, 1)
-        winreg.SetValueEx(k, "ProxyServer", 0, winreg.REG_SZ, target)
-        winreg.SetValueEx(k, "ProxyOverride", 0, winreg.REG_SZ, _BYPASS)
+        if mode == "pac" and pac_url:
+            winreg.SetValueEx(k, "AutoConfigURL", 0, winreg.REG_SZ, pac_url)
+            winreg.SetValueEx(k, "ProxyEnable", 0, winreg.REG_DWORD, 0)
+        else:
+            _delete_value(k, "AutoConfigURL")
+            winreg.SetValueEx(k, "ProxyEnable", 0, winreg.REG_DWORD, 1)
+            winreg.SetValueEx(k, "ProxyServer", 0, winreg.REG_SZ, target)
+            winreg.SetValueEx(k, "ProxyOverride", 0, winreg.REG_SZ, _BYPASS)
     _refresh_wininet()
     return True
+
+
+def _delete_value(key, name: str) -> None:
+    import winreg
+    try:
+        winreg.DeleteValue(key, name)
+    except OSError:
+        pass
 
 
 def restore_system_proxy() -> bool:
@@ -86,19 +116,28 @@ def restore_system_proxy() -> bool:
         return False
     import winreg
     saved = _load_saved()
-    prev = saved.pop("proxy", {"enabled": False, "server": "", "bypass": ""})
+    prev = saved.pop("proxy", {"enabled": False, "server": "", "bypass": "", "pac": ""})
     with winreg.OpenKey(winreg.HKEY_CURRENT_USER, _INET_KEY, 0, winreg.KEY_SET_VALUE) as k:
         winreg.SetValueEx(k, "ProxyEnable", 0, winreg.REG_DWORD, 1 if prev.get("enabled") else 0)
         winreg.SetValueEx(k, "ProxyServer", 0, winreg.REG_SZ, prev.get("server", ""))
         winreg.SetValueEx(k, "ProxyOverride", 0, winreg.REG_SZ, prev.get("bypass", ""))
+        if prev.get("pac"):
+            winreg.SetValueEx(k, "AutoConfigURL", 0, winreg.REG_SZ, prev["pac"])
+        else:
+            _delete_value(k, "AutoConfigURL")
     _save(saved)
     _refresh_wininet()
     return True
 
 
-def system_proxy_points_to(host: str, port: int) -> bool:
+def system_proxy_needs_restore() -> bool:
+    """前回 Shoji が設定を戻さずに終了した（異常終了・強制終了）か"""
+    return "proxy" in _load_saved()
+
+
+def system_proxy_points_to(host: str, port: int, pac_url: str = "") -> bool:
     p = get_system_proxy()
-    return p["enabled"] and p["server"] == f"{host}:{port}"
+    return (p["enabled"] and p["server"] == f"{host}:{port}") or (bool(pac_url) and p.get("pac") == pac_url)
 
 
 # ------------------------------------------------------------------ DNS
@@ -309,3 +348,89 @@ def enable_firefox_windows_roots() -> int:
             except OSError:
                 continue
     return count
+
+
+# ------------------------------------------------------------------ 自動起動・多重起動防止
+_RUN_KEY = r"Software\Microsoft\Windows\CurrentVersion\Run"
+_RUN_NAME = "Shoji"
+
+
+def launch_command(*extra: str) -> list[str]:
+    """Shoji 自身を起動するコマンド（exe 版 / ソース版のどちらでも）"""
+    import sys
+    from .config import FROZEN, BASE_DIR
+    if FROZEN:
+        return [sys.executable, *extra]
+    exe = sys.executable
+    if IS_WIN and exe.lower().endswith("python.exe"):
+        pyw = exe[:-len("python.exe")] + "pythonw.exe"
+        if os.path.exists(pyw):
+            exe = pyw           # コンソール画面を出さない
+    return [exe, str(BASE_DIR / "main.py"), *extra]
+
+
+def get_autostart() -> bool:
+    if not IS_WIN:
+        return False
+    import winreg
+    try:
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, _RUN_KEY) as k:
+            winreg.QueryValueEx(k, _RUN_NAME)
+            return True
+    except OSError:
+        return False
+
+
+def set_autostart(on: bool) -> bool:
+    """Windows にサインインしたとき自動で起動する（現在のユーザーのみ・管理者権限不要）"""
+    if not IS_WIN:
+        return False
+    import subprocess as _sp
+    import winreg
+    with winreg.OpenKey(winreg.HKEY_CURRENT_USER, _RUN_KEY, 0, winreg.KEY_SET_VALUE) as k:
+        if on:
+            cmd = _sp.list2cmdline(launch_command("--autostart"))
+            winreg.SetValueEx(k, _RUN_NAME, 0, winreg.REG_SZ, cmd)
+        else:
+            _delete_value(k, _RUN_NAME)
+    return True
+
+
+_mutex_handle = None
+
+
+def acquire_single_instance() -> bool:
+    """同時に 2 つ起動しないようにする。既に起動していれば False"""
+    global _mutex_handle
+    if not IS_WIN:
+        return True
+    k32 = ctypes.windll.kernel32
+    _mutex_handle = k32.CreateMutexW(None, False, "Local\\ShojiAdFilter")
+    return k32.GetLastError() != 183   # ERROR_ALREADY_EXISTS
+
+
+def wait_for_process_exit(pid: int) -> None:
+    """指定したプロセスが終了するまで待つ（ウォッチドッグ用）"""
+    if IS_WIN:
+        k32 = ctypes.windll.kernel32
+        h = k32.OpenProcess(0x00100000, False, pid)   # SYNCHRONIZE
+        if not h:
+            return
+        try:
+            k32.WaitForSingleObject(h, 0xFFFFFFFF)
+        finally:
+            k32.CloseHandle(h)
+        return
+    import time
+    while True:
+        try:
+            os.kill(pid, 0)
+        except OSError:
+            return
+        time.sleep(1)
+
+
+def open_path(path) -> None:
+    """ファイルやフォルダを既定のアプリで開く"""
+    if IS_WIN:
+        os.startfile(str(path))  # noqa: S606

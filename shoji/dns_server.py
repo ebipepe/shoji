@@ -139,7 +139,8 @@ class DnsFilter:
         stats.count_request("dns")
         cfg = self.ctx.cfg
         F = cfg["features"]
-        allowed = is_whitelisted(name, cfg.get("whitelist", [])) or self.ctx.is_allowed(name)
+        allowed = (self.ctx.paused or is_whitelisted(name, cfg.get("whitelist", []))
+                   or self.ctx.is_allowed(name))
 
         if F.get("dns_filtering", True) and not allowed:
             cat = self.ctx.engine.dns_lookup(name)

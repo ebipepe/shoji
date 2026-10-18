@@ -89,6 +89,21 @@ Shoji（旧名 `koukoku_blocker`）の各ファイルの目的・設計思想と
   - `.gitignore` `.gitattributes`
   - 本ファイル
 - 著作権表示は「The Shoji Authors」とし、貢献者は `AUTHORS` に記載する方式にした。
+- GitHub アカウント `ebipepe` を作成し、`ebipepe/shoji` として公開。v0.1.0 をリリースした。
+
+### v0.2.0 — 普段使いできる常駐アプリへ（2026-10-18 10:00〜13:30）
+- 目的: 「Python を入れなくても使える」「異常終了してもネットが切れない」「PC の起動と同時に動く」。
+- **タスクトレイ常駐**（`shoji/tray.py`、pystray）。一時停止中はアイコンが灰色になる。
+- **Windows の起動時に開始**（HKCU の Run キー。管理者権限は不要）。
+- **PAC 方式のプロキシ設定**: 固定のプロキシ指定ではなく自動構成スクリプトを使う。Shoji が止まるとスクリプトが取得できず、ブラウザは自動で直接接続に戻る。
+  - 注意点: PAC の `shExpMatch` は文字クラス（`[0-9]`）を使えないため、プライベート IP の判定は JS の正規表現で書いた。
+- **見張りプロセス（watchdog）**: 本体の終了を待ち、設定が Shoji を向いたままなら元に戻す。
+- **多重起動の防止**（名前付きミューテックス）。2 回目の起動はダッシュボードを開くだけ。
+- **一時停止**: プロキシ・DNS とも素通しにする（トレイとダッシュボードから）。
+- **ログファイル** `shoji.log`。コンソールなしで動くため必要になった。
+- **exe 配布**（PyInstaller、フォルダ形式）。GitHub でリリースを公開すると、Actions が自動でビルド・起動テスト・ZIP 化・添付まで行う（`.github/workflows/release.yml`）。
+  - データの保存先は、exe 版では `%LOCALAPPDATA%\Shoji`（exe の置き場所に書き込めないことがあるため）。
+- **ライセンス対応**: exe には LICENSE・NOTICE・同梱ライブラリのライセンス全文（`THIRD_PARTY_LICENSES.txt`）を同梱。LGPL のライブラリ（pystray、ldap3）は差し替え可能な .py のまま同梱し、LGPL の urwid・WinDivert は除外。方針は `docs/LICENSING.md` にまとめた。
 
 ---
 
@@ -96,7 +111,7 @@ Shoji（旧名 `koukoku_blocker`）の各ファイルの目的・設計思想と
 
 | ファイル | 作成 | 主な改修 | 目的・設計 |
 |---|---|---|---|
-| `main.py` | 10/17 22:52 | 改修1,2,4 / v0.1 | 起動の司令塔。設定・統計・フィルタエンジンを用意し、DNS サーバー・ダッシュボード・リスト自動更新・mitmproxy を起動する。終了時はシステムのプロキシ/DNS 設定を元に戻す。起動時に証明書を確認・作成する |
+| `main.py` | 10/17 22:52 | 改修1,2,4 / v0.1 / v0.2 | 起動の司令塔。設定・統計・フィルタエンジンを用意し、DNS サーバー・ダッシュボード・リスト自動更新・mitmproxy を起動する。終了時はシステムのプロキシ/DNS 設定を元に戻す。起動時に証明書を確認・作成する |
 | `shoji/__init__.py` | 10/17 22:52 | v0.1 | パッケージ定義とバージョン番号 |
 | `shoji/config.py` | 10/17 22:52 | 改修7 | 設定（`data/config.json`）の既定値と読み書き。ファイルの更新を監視して即時反映する。既定値と利用者の設定を深くマージするので、機能を追加しても古い設定ファイルのまま動く |
 | `shoji/filters.py` | 10/17 22:52 | 改修2 | フィルタエンジン。ABP/uBO/AdGuard 形式と hosts 形式を読む。約 65 万ルールを 1 リクエストあたり 1ms 未満で照合するため、ホスト名・トークン・3 文字組（trigram）・ページのドメインで索引を作る。正規表現は必要になるまでコンパイルしない |
@@ -115,7 +130,7 @@ Shoji（旧名 `koukoku_blocker`）の各ファイルの目的・設計思想と
 | `shoji/assets/icon.svg` | 10/18 | v0.1 | ダッシュボード用のアイコン |
 | `rules/builtin_ads.txt` | 10/17 22:52 | — | 内蔵の広告ルール。リスト未取得時の最小セット、国内アドネットワーク、アプリ内広告 SDK、YouTube 用 |
 | `rules/builtin_trackers.txt` | 10/17 22:52 | — | 内蔵のトラッカールール（国内のアクセス解析を含む） |
-| `rules/user_rules.txt` | 10/17 22:52 | — | 利用者が追加するルール（ダッシュボードから編集できる） |
+| `rules/user_rules.txt` | 10/17 22:52 | v0.2 | 利用者ルールのひな形（初回起動時に data にコピーされる） |
 | `tests/test_core.py` | 10/17 22:52 | 改修2 / v0.1 | 単体テスト（フィルタ照合、DNS、要素非表示、パラメーター除去、AMP、YouTube、CSP） |
 | `install.bat` | 10/17 22:52 | v0.1 | 仮想環境の作成と依存パッケージのインストール |
 | `start.bat` | 10/17 22:52 | v0.1 | 起動 |
@@ -129,7 +144,14 @@ Shoji（旧名 `koukoku_blocker`）の各ファイルの目的・設計思想と
 | `.github/workflows/ci.yml` | 10/18 | v0.1 | GitHub Actions による自動テスト |
 | `.gitignore` / `.gitattributes` | 10/18 | v0.1 | `data/`（秘密鍵を含む）を Git に入れない設定、改行コード（.bat は CRLF） |
 | `assets/icon/*` | 10/18 | v0.1 | 障子のアイコン（SVG 原本、PNG 各サイズ、Windows 用 ICO） |
-| `docs/DEVELOPMENT_HISTORY.md` | 10/18 | v0.1 | 本ファイル |
+| `docs/DEVELOPMENT_HISTORY.md` | 10/18 | v0.1 / v0.2 | 本ファイル |
+| `docs/LICENSING.md` | 10/18 13:30 | v0.2 | Apache License 2.0 と同梱ライブラリのライセンスの扱い |
+| `shoji/tray.py` | 10/18 | v0.2 | タスクトレイのアイコンとメニュー |
+| `shoji/assets/icon-64.png` / `icon.ico` | 10/18 | v0.2 | トレイ用アイコン |
+| `start_console.bat` | 10/18 | v0.2 | コンソール画面つきで起動（ログ確認用）。`start.bat` はトレイのみで起動するようにした |
+| `packaging/shoji.spec` | 10/18 | v0.2 | exe 化の設定（PyInstaller）。LGPL ライブラリの扱いもここで指定 |
+| `packaging/build_windows.bat` | 10/18 | v0.2 | 手元の PC で exe をビルドする |
+| `.github/workflows/release.yml` | 10/18 | v0.2 | リリース公開時に exe を自動ビルドして添付する |
 
 ### 実行時に生成されるファイル（`data/`。Git には含めない）
 | ファイル | 内容 |
@@ -140,6 +162,10 @@ Shoji（旧名 `koukoku_blocker`）の各ファイルの目的・設計思想と
 | `data/lists/` | ダウンロードしたフィルタリスト |
 | `data/passthrough_hosts.json` / `data/untrusting_apps.json` | 自動で HTTPS 復号の対象外にしたホスト / アプリ |
 | `data/saved_network.json` | 変更前のプロキシ/DNS 設定（終了時の復元用） |
+| `data/user_rules.txt` | 利用者のルール（v0.2 から data に移動） |
+| `data/shoji.log` | ログ |
+
+exe 版では `data/` の代わりに `%LOCALAPPDATA%\Shoji` が使われる。
 
 ---
 
@@ -151,4 +177,5 @@ Shoji（旧名 `koukoku_blocker`）の各ファイルの目的・設計思想と
 - **巨大なサービスのデータは、必要な部分だけ慎重に加工する。** 似た名前のキーが関係ない場所にもある。
 - **CSP は 1 ヘッダーに複数のポリシーが入りうる。**
 - **署名付き URL のパラメーターを消すと壊れる。** 追跡パラメーターの除去は、ページを開くときだけにする。
+- **常駐ソフトは「落ちたとき」を先に設計する。** 固定のプロキシ指定は、本体が落ちるとネット全体を止める。PAC なら自然に直接接続へ戻る。
 - **配置後は内容（チェックサム）で確認する。** 「書き込み成功」の表示だけを信じない。

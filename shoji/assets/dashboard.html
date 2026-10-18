@@ -85,6 +85,7 @@ code{font-family:ui-monospace,Consolas,monospace;font-size:12.5px;background:var
 <header>
   <h1><img src="/icon.svg" alt="" width="22" height="22" style="vertical-align:-4px;margin-right:8px">Shoji<span id="ver"></span></h1>
   <div class="pills" id="pills"></div>
+  <button class="btn" id="pause-btn" style="padding:4px 12px;font-size:12.5px">一時停止</button>
 </header>
 <nav id="tabs">
   <button data-tab="stats" class="active">統計レポート</button>
@@ -200,12 +201,17 @@ code{font-family:ui-monospace,Consolas,monospace;font-size:12.5px;background:var
       <b>HTTPS フィルタリング用の証明書をインストール</b> <span id="st-cert"></span>
       <p class="muted small">YouTube の動画広告除去・要素非表示・ステルスモードなど、HTTPS サイトの中身を処理するのに必要です。この PC 専用に生成された証明書で、外部には送信されません。</p>
       <button class="btn pri" id="do-cert">証明書をインストール</button> <a class="btn" href="/cert">証明書をダウンロード</a>
-      <p class="muted small">Firefox は独自の証明書ストアを使うため、設定 → プライバシーとセキュリティ → 証明書 → 「証明書を表示」→ 認証局証明書 → インポートから登録してください。</p>
+      <p class="muted small">Firefox は起動時に、Windows の証明書を使う設定を自動で入れます（Firefox の再起動後に有効）。</p>
     </div></div>
     <div class="step"><div class="n">2</div><div style="flex:1">
       <b>Windows のプロキシ設定</b> <span id="st-proxy"></span>
-      <p class="muted small">ブラウザと、システムのプロキシ設定に従うアプリの通信をフィルタします。終了時には元の設定に戻ります。</p>
+      <p class="muted small">ブラウザと、システムのプロキシ設定に従うアプリの通信をフィルタします。既定では「自動構成スクリプト」方式なので、Shoji が止まっていても自動で直接接続に戻り、ネットが切れません。終了時には元の設定に戻ります。</p>
       <button class="btn pri" id="proxy-on">有効にする</button> <button class="btn" id="proxy-off">元に戻す</button>
+    </div></div>
+    <div class="step"><div class="n">★</div><div style="flex:1">
+      <b>Windows の起動時に Shoji を開始</b> <span id="st-auto"></span>
+      <p class="muted small">サインインすると自動でタスクトレイに常駐します（現在のユーザーのみ・管理者権限は不要）。</p>
+      <label class="toggle" style="max-width:420px"><span class="switch"><input type="checkbox" id="auto-toggle"><span></span></span><span><div class="t">自動起動</div><div class="d">タスクトレイの障子アイコンのメニューからも切り替えられます</div></span></label>
     </div></div>
     <div class="step"><div class="n">3</div><div style="flex:1">
       <b>DNS フィルタリング（アプリ内広告）</b> <span id="st-dns"></span>
@@ -262,7 +268,12 @@ async function loadStatus() {
     pill(s.system_proxy, 'システムプロキシ') + pill(s.cert_installed, '証明書');
   const mark = ok => ok ? '<span class="ok">✔ 設定済み</span>' : '<span class="ng">未設定</span>';
   $('#st-cert').innerHTML = mark(s.cert_installed) + (s.https_ready ? '' : ` <span class="ng">— ${esc(s.https_problem || 'HTTPS フィルタリング停止中')}</span>`);
-  $('#st-proxy').innerHTML = mark(s.system_proxy);
+  $('#st-proxy').innerHTML = mark(s.system_proxy) + (s.system_proxy ? ` <span class="muted small">（${s.proxy_mode === 'pac' ? '自動構成スクリプト' : '固定設定'}）</span>` : '');
+  $('#auto-toggle').checked = !!s.autostart;
+  $('#st-auto').innerHTML = s.autostart ? '<span class="ok">✔ 有効</span>' : '<span class="muted">無効</span>';
+  $('#pause-btn').textContent = s.paused ? '▶ 再開' : '一時停止';
+  $('#pause-btn').classList.toggle('pri', !!s.paused);
+  PAUSED = !!s.paused;
   $('#st-dns').innerHTML = st.dns === 'running' ? '<span class="ok">DNS サーバー稼働中</span>' : '<span class="ng">DNS サーバー停止中（' + esc(st.dns) + '）</span>';
   $('#proxy-port').textContent = s.proxy_addr.split(':').pop() + ' 番ポート';
   const pts = (s.untrusting_apps || []).map(a => `<span class="chip">アプリ: ${esc(a)}</span>`).concat(s.passthrough_hosts.map(h => `<span class="chip">${esc(h)}</span>`));
@@ -454,6 +465,9 @@ $('#chk-go').onclick = async () => {
 /* ---------- セットアップ ---------- */
 $('#pt-clear').onclick = async () => { await api('/api/passthrough/clear', {}); toast('クリアしました'); loadStatus(); };
 $('#do-cert').onclick = async () => { const r = await api('/api/system/cert', {}); toast(r.message); loadStatus(); };
+let PAUSED = false;
+$('#pause-btn').onclick = async () => { const r = await api('/api/pause', {paused: !PAUSED}); toast(r.paused ? 'フィルタを一時停止しました（すべての通信をそのまま通します）' : 'フィルタを再開しました'); loadStatus(); };
+$('#auto-toggle').onchange = async e => { const r = await api('/api/autostart', {on: e.target.checked}); toast(r.autostart ? 'Windows の起動時に開始します' : '自動起動をオフにしました'); loadStatus(); };
 $('#proxy-on').onclick = async () => { const r = await api('/api/system/proxy', {on: true}); toast(r.ok ? 'プロキシを設定しました' : 'Windows 以外では手動で設定してください'); loadStatus(); };
 $('#proxy-off').onclick = async () => { await api('/api/system/proxy', {on: false}); toast('元のプロキシ設定に戻しました'); loadStatus(); };
 $('#dns-on').onclick = async () => { const r = await api('/api/system/dns', {on: true}); toast(r.message); };

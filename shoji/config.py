@@ -10,11 +10,30 @@ from __future__ import annotations
 import copy
 import json
 import os
+import sys
 import threading
 from pathlib import Path
 
+# 読み取り専用のリソース（ルール・画面）。exe 版では展開先（sys._MEIPASS）を指す
 BASE_DIR = Path(__file__).resolve().parent.parent
-DATA_DIR = BASE_DIR / "data"
+FROZEN = bool(getattr(sys, "frozen", False))
+
+
+def _default_data_dir() -> Path:
+    """設定・統計・証明書の置き場所。
+    ソース版はリポジトリ内の data/、exe 版は %LOCALAPPDATA%\\Shoji（書き込み可能な場所）。
+    環境変数 SHOJI_DATA で変更できる。"""
+    env = os.environ.get("SHOJI_DATA")
+    if env:
+        return Path(env)
+    if FROZEN:
+        base = os.environ.get("LOCALAPPDATA") or str(Path.home())
+        return Path(base) / "Shoji"
+    return BASE_DIR / "data"
+
+
+DATA_DIR = _default_data_dir()
+LOG_PATH = DATA_DIR / "shoji.log"
 LISTS_DIR = DATA_DIR / "lists"
 CERT_DIR = DATA_DIR / "certs"
 RULES_DIR = BASE_DIR / "rules"
@@ -55,6 +74,13 @@ DEFAULT_CONFIG: dict = {
         "listen_host": "127.0.0.1",
         "listen_port": 8080,
         "set_system_proxy": True,       # 起動時に Windows のプロキシ設定を自動変更
+        # "pac" = 自動構成スクリプト方式（Shoji が止まっていても自動で直接接続に戻る。推奨）
+        # "static" = 固定のプロキシ設定（PAC に対応しないアプリも通したい場合）
+        "system_proxy_mode": "pac",
+    },
+    "app": {
+        "tray": True,                   # タスクトレイに常駐する
+        "open_dashboard_on_start": True,
     },
     "dns": {
         "listen_host": "127.0.0.1",     # LAN の他端末(スマホ等)からも使う場合は 0.0.0.0

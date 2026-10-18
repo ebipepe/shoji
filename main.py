@@ -2,35 +2,99 @@
 # Copyright 2026 The Shoji Authors
 """Shoji 起動スクリプト。
 
-  python main.py                 すべて起動（HTTPS フィルタ + DNS + ダッシュボード）
+  python main.py                 すべて起動（HTTPS フィルタ + DNS + ダッシュボード + タスクトレイ）
   python main.py --no-dns        DNS フィルタを起動しない
   python main.py --no-system-proxy  Windows のプロキシ設定を変更しない
   python main.py --update-lists  フィルタリストを強制更新してから起動
+  python main.py --no-tray       タスクトレイに表示しない（コンソールで Ctrl+C で終了）
 """
 from __future__ import annotations
 
 import argparse
 import asyncio
+import io
+import os
 import signal
+import subprocess
 import sys
 import threading
+import time
 import webbrowser
 
-if sys.platform == "win32":
-    # コンソールの文字化け防止
-    try:
-        sys.stdout.reconfigure(encoding="utf-8")
-        sys.stderr.reconfigure(encoding="utf-8")
-    except AttributeError:
-        pass
-
 from shoji import __version__, lists, winsys
-from shoji.config import CERT_DIR, Config
+from shoji.config import CERT_DIR, DATA_DIR, LOG_PATH, Config
 from shoji.context import AppContext
 from shoji.filters import FilterEngine
 from shoji.stats import Stats
 
 
+# ---------------------------------------------------------------- ログ
+class _Tee(io.TextIOBase):
+    """コンソール（あれば）とログファイルの両方に書き出す"""
+
+    def __init__(self, *streams):
+        self.streams = [s for s in streams if s is not None]
+
+    def write(self, s):
+        for st in self.streams:
+            try:
+                st.write(s)
+                st.flush()
+            except (OSError, ValueError):
+                pass
+        return len(s)
+
+    def flush(self):
+        pass
+
+
+def setup_logging() -> None:
+    """ログを data/shoji.log にも残す（コンソールの無い exe / pythonw 起動でも原因を追えるように）"""
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    try:
+        if LOG_PATH.exists() and LOG_PATH.stat().st_size > 2_000_000:
+            LOG_PATH.replace(LOG_PATH.with_suffix(".old.log"))
+        log = open(LOG_PATH, "a", encoding="utf-8", buffering=1)  # noqa: SIM115 — プロセス終了まで開いておく
+    except OSError:
+        log = None
+    con_out, con_err = sys.stdout, sys.stderr
+    for con in (con_out, con_err):
+        try:
+            con.reconfigure(encoding="utf-8")   # コンソールの文字化け防止
+        except (AttributeError, ValueError):
+            pass
+    sys.stdout = _Tee(con_out, log)
+    sys.stderr = _Tee(con_err, log)
+    print(f"\n----- {time.strftime('%Y-%m-%d %H:%M:%S')} -----")
+
+
+# ---------------------------------------------------------------- 異常終了対策
+def run_watchdog(pid: int) -> None:
+    """本体（pid）が終了するまで待ち、設定を戻さずに落ちていたら元に戻す。
+    クラッシュや強制終了でネットにつながらなくなるのを防ぐ。"""
+    winsys.wait_for_process_exit(pid)
+    time.sleep(1.5)
+    if winsys.system_proxy_needs_restore():
+        winsys.restore_system_proxy()
+        print("[watchdog] Shoji が異常終了したため、プロキシ設定を元に戻しました")
+    if winsys.dns_was_set_by_us() and winsys.is_admin():
+        winsys.reset_system_dns()
+        print("[watchdog] DNS 設定を元に戻しました")
+
+
+def start_watchdog() -> None:
+    if not winsys.IS_WIN:
+        return
+    flags = 0x00000008 | 0x00000200 | 0x08000000   # DETACHED_PROCESS | NEW_PROCESS_GROUP | NO_WINDOW
+    try:
+        subprocess.Popen(winsys.launch_command("--watchdog", str(os.getpid())), creationflags=flags,
+                         close_fds=True, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+                         stderr=subprocess.DEVNULL)
+    except OSError as e:
+        print(f"[watchdog] 起動できませんでした: {e}")
+
+
+# ---------------------------------------------------------------- 各部品
 def config_watcher(ctx: AppContext, stop: threading.Event):
     """設定ファイルの変更（手動編集を含む）を検知して反映する"""
     while not stop.wait(2):
@@ -40,7 +104,6 @@ def config_watcher(ctx: AppContext, stop: threading.Event):
 def ensure_cert(ctx: AppContext):
     """ルート証明書がインストール済みか確認し、無ければインストールを試みる。
     確認できるまでは HTTPS を復号しない（復号すると全サイトが証明書エラーになるため）。"""
-    import time
     for _ in range(50):                       # mitmproxy が証明書を生成するのを待つ
         if winsys.ca_cert_path().exists():
             break
@@ -94,6 +157,8 @@ async def run_proxy(ctx: AppContext, stop_event: asyncio.Event):
         block_global=False,
     )
     master.addons.add(ShojiAddon(ctx))
+    loop = asyncio.get_running_loop()
+    ctx.request_exit = lambda: loop.call_soon_threadsafe(stop_event.set)
     threading.Thread(target=ensure_cert, args=(ctx,), daemon=True).start()
     task = asyncio.create_task(master.run())
     ctx.status["proxy"] = "running"
@@ -107,6 +172,7 @@ async def run_proxy(ctx: AppContext, stop_event: asyncio.Event):
     ctx.status["proxy"] = "stopped"
 
 
+# ---------------------------------------------------------------- 起動
 def main():
     ap = argparse.ArgumentParser(description="Shoji - 広告/トラッカーブロッカー")
     ap.add_argument("--no-dns", action="store_true", help="DNS フィルタを起動しない")
@@ -114,9 +180,26 @@ def main():
     ap.add_argument("--no-system-proxy", action="store_true", help="Windows のプロキシ設定を変更しない")
     ap.add_argument("--no-browser", action="store_true", help="ダッシュボードを自動で開かない")
     ap.add_argument("--update-lists", action="store_true", help="フィルタリストを強制更新する")
+    ap.add_argument("--no-tray", action="store_true", help="タスクトレイに表示しない")
+    ap.add_argument("--autostart", action="store_true", help=argparse.SUPPRESS)   # Windows 起動時の自動起動
+    ap.add_argument("--watchdog", type=int, metavar="PID", help=argparse.SUPPRESS)
+    ap.add_argument("--version", action="version", version=f"Shoji {__version__}")
     args = ap.parse_args()
 
+    setup_logging()
+    if args.watchdog:
+        run_watchdog(args.watchdog)
+        return
+
     print(f"=== Shoji v{__version__} ===")
+    if not winsys.acquire_single_instance():
+        # すでに起動している場合はダッシュボードを開くだけ
+        print("Shoji はすでに起動しています。ダッシュボードを開きます。")
+        if not args.autostart:
+            port = Config().get()["dashboard"]["listen_port"]
+            webbrowser.open(f"http://127.0.0.1:{port}/")
+        return
+
     config = Config()
     stats = Stats()
     ctx = AppContext(config, stats, FilterEngine())
@@ -144,7 +227,7 @@ def main():
             print("[dns] ポート 53 が使用中の可能性があります（インターネット接続の共有 / Hyper-V 等）。"
                   "config.json の dns.listen_port を変更するか --no-dns で起動してください。")
 
-    from shoji.dashboard import DashboardServer
+    from shoji.dashboard import DashboardServer, apply_system_proxy
     dash = DashboardServer(ctx)
     url = dash.start()
     print(f"[dashboard] {url}")
@@ -152,17 +235,39 @@ def main():
     proxy_set = False
     p = ctx.cfg["proxy"]
     if not args.no_proxy and not args.no_system_proxy and p.get("set_system_proxy", True):
-        proxy_set = winsys.set_system_proxy(p["listen_host"], p["listen_port"])
+        if winsys.system_proxy_needs_restore():
+            print("[system] 前回は設定を戻さずに終了していました（元の設定は保存済みです）")
+        start_watchdog()
+        proxy_set = apply_system_proxy(ctx)
         if proxy_set:
-            print("[system] Windows のプロキシ設定を Shoji に向けました（終了時に元に戻します）")
+            mode = "自動構成スクリプト" if p.get("system_proxy_mode", "pac") == "pac" else "固定設定"
+            print(f"[system] Windows のプロキシ設定を Shoji に向けました（{mode}。終了時に元に戻します）")
 
-    if not args.no_browser:
+    exit_event = threading.Event()
+    tray = None
+    if not args.no_tray and winsys.IS_WIN and ctx.cfg.get("app", {}).get("tray", True):
+        from shoji.tray import Tray
+
+        def _exit_from_tray():
+            exit_event.set()
+            if ctx.request_exit:
+                ctx.request_exit()
+        tray = Tray(ctx, url, _exit_from_tray)
+        if not tray.start():
+            tray = None
+
+    if not args.no_browser and not args.autostart and ctx.cfg.get("app", {}).get("open_dashboard_on_start", True):
         threading.Timer(1.5, lambda: webbrowser.open(url)).start()
 
-    print("終了するには Ctrl+C を押してください。")
+    if tray:
+        print("タスクトレイの障子アイコンから、一時停止・ダッシュボード・終了ができます。")
+    else:
+        print("終了するには Ctrl+C を押してください。")
 
     def cleanup():
         stop_thread.set()
+        if tray:
+            tray.stop()
         if proxy_set:
             winsys.restore_system_proxy()
             print("[system] プロキシ設定を元に戻しました")
@@ -175,7 +280,8 @@ def main():
 
     try:
         if args.no_proxy:
-            threading.Event().wait()
+            ctx.request_exit = exit_event.set
+            exit_event.wait()
         else:
             async def runner():
                 stop_event = asyncio.Event()
@@ -190,7 +296,7 @@ def main():
     except KeyboardInterrupt:
         pass
     finally:
-        print("\n終了処理中…")
+        print("終了処理中…")
         cleanup()
         print("終了しました。")
 

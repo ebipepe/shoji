@@ -6,7 +6,7 @@ Thanks for helping. Issues and pull requests are welcome in English or Japanese 
 
 - **A site breaks or shows ads:** include the URL, your browser, and what you expected. You can use
   the dashboard's *Filters → URL check* to see which rule matched a request.
-- **Shoji crashes or won't start:** include the console output of `start.bat` and your Windows / Python versions.
+- **Shoji crashes or won't start:** attach `shoji.log` (tray menu → *Open log*; it is in `%LOCALAPPDATA%\Shoji` for the Windows app or `data\` for the source version) and your Windows version.
 - **Security issues:** see [SECURITY.md](SECURITY.md). Please don't file them publicly.
 
 ## Development setup

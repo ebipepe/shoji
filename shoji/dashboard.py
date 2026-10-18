@@ -16,6 +16,18 @@ from .config import ASSETS_DIR, STATS_DB
 from .context import AppContext
 
 
+def pac_url(ctx: AppContext) -> str:
+    d = ctx.cfg["dashboard"]
+    return f"http://127.0.0.1:{d['listen_port']}/proxy.pac"
+
+
+def apply_system_proxy(ctx: AppContext) -> bool:
+    """設定（PAC / 固定）に従って Windows のプロキシ設定を Shoji に向ける"""
+    p = ctx.cfg["proxy"]
+    return winsys.set_system_proxy(p["listen_host"], p["listen_port"],
+                                   p.get("system_proxy_mode", "pac"), pac_url(ctx))
+
+
 def create_app(ctx: AppContext) -> Flask:
     app = Flask(__name__)
     app.json.ensure_ascii = False
@@ -37,6 +49,26 @@ def create_app(ctx: AppContext) -> Flask:
     def index():
         return send_file(ASSETS_DIR / "dashboard.html")
 
+    @app.get("/proxy.pac")
+    def proxy_pac():
+        # Windows / ブラウザが読む自動構成スクリプト。Shoji が止まると取得できなくなり、直接接続に戻る
+        p = ctx.cfg["proxy"]
+        host = "127.0.0.1" if p["listen_host"] in ("0.0.0.0", "::") else p["listen_host"]
+        return Response(winsys.pac_script(host, int(p["listen_port"])),
+                        mimetype="application/x-ns-proxy-autoconfig")
+
+    @app.post("/api/pause")
+    def pause():
+        on = bool((request.get_json(force=True) or {}).get("paused"))
+        ctx.set_paused(on)
+        return jsonify({"ok": True, "paused": ctx.paused})
+
+    @app.post("/api/autostart")
+    def autostart():
+        on = bool((request.get_json(force=True) or {}).get("on"))
+        ok = winsys.set_autostart(on)
+        return jsonify({"ok": ok, "autostart": winsys.get_autostart()})
+
     @app.get("/icon.svg")
     def icon():
         return send_file(ASSETS_DIR / "icon.svg", mimetype="image/svg+xml")
@@ -52,7 +84,10 @@ def create_app(ctx: AppContext) -> Flask:
             "live": ctx.stats.live(),
             "is_windows": winsys.IS_WIN,
             "is_admin": winsys.is_admin(),
-            "system_proxy": winsys.system_proxy_points_to(p["listen_host"], p["listen_port"]),
+            "system_proxy": winsys.system_proxy_points_to(p["listen_host"], p["listen_port"], pac_url(ctx)),
+            "proxy_mode": p.get("system_proxy_mode", "pac"),
+            "paused": ctx.paused,
+            "autostart": winsys.get_autostart(),
             "cert_installed": winsys.ca_cert_installed(),
             "https_ready": ctx.https_ready,
             "https_problem": ctx.https_problem,
@@ -151,8 +186,7 @@ def create_app(ctx: AppContext) -> Flask:
     @app.post("/api/system/proxy")
     def sys_proxy():
         on = bool((request.get_json(force=True) or {}).get("on"))
-        p = ctx.cfg["proxy"]
-        ok = winsys.set_system_proxy(p["listen_host"], p["listen_port"]) if on else winsys.restore_system_proxy()
+        ok = apply_system_proxy(ctx) if on else winsys.restore_system_proxy()
         return jsonify({"ok": ok})
 
     @app.post("/api/system/dns")

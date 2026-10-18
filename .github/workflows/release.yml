@@ -1,0 +1,92 @@
+# SPDX-License-Identifier: Apache-2.0
+# Builds the Windows executable and attaches it to a GitHub Release.
+#
+# Triggered when a release is published on GitHub (Releases → Draft a new release),
+# or manually from the Actions tab (the build is then kept as a workflow artifact only).
+name: Release build
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  windows-exe:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install runtime dependencies (clean environment)
+        run: |
+          python -m venv .venv
+          .venv\Scripts\python -m pip install --upgrade pip
+          .venv\Scripts\pip install -r requirements.txt
+
+      - name: Collect third-party licenses
+        # Apache-2.0 / MIT / BSD all require their license (and NOTICE) texts to ship with
+        # binary redistributions. Generate them from exactly the packages bundled in the exe.
+        run: |
+          .venv\Scripts\pip install pip-licenses
+          .venv\Scripts\pip-licenses --from=mixed --with-urls --with-license-file --with-notice-file `
+            --no-license-path --format=plain-vertical `
+            --ignore-packages pip-licenses prettytable wcwidth pip setuptools `
+            --output-file THIRD_PARTY_LICENSES.txt
+          .venv\Scripts\pip-licenses --from=mixed --format=markdown `
+            --ignore-packages pip-licenses prettytable wcwidth pip setuptools
+          Add-Content THIRD_PARTY_LICENSES.txt "`n`nPyInstaller bootloader`nGPL-2.0 with a special exception that permits distributing the bundled application under any license.`nhttps://github.com/pyinstaller/pyinstaller/blob/develop/COPYING.txt"
+
+      - name: Build Shoji.exe
+        run: |
+          .venv\Scripts\pip install pyinstaller
+          .venv\Scripts\pyinstaller packaging/shoji.spec --noconfirm
+
+      - name: Smoke test the executable
+        run: |
+          $env:SHOJI_DATA = "$env:RUNNER_TEMP\shoji-data"
+          $p = Start-Process -FilePath dist\Shoji\Shoji.exe -ArgumentList "--no-system-proxy","--no-browser","--no-tray","--no-dns" -PassThru
+          $ok = $false
+          for ($i = 0; $i -lt 60; $i++) {
+            Start-Sleep -Seconds 2
+            try {
+              $s = Invoke-RestMethod http://127.0.0.1:8765/api/status -TimeoutSec 3
+              if ($s.status.proxy -eq "running") { $ok = $true; break }
+            } catch {}
+          }
+          Get-Content "$env:SHOJI_DATA\shoji.log" -ErrorAction SilentlyContinue
+          Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue
+          if (-not $ok) { throw "Shoji.exe did not start" }
+
+      - name: Package
+        id: pkg
+        run: |
+          $ver = if ($env:GITHUB_REF_TYPE -eq "tag") { $env:GITHUB_REF_NAME } else { "dev-$($env:GITHUB_SHA.Substring(0,7))" }
+          $name = "Shoji-$ver-windows-x64"
+          Copy-Item LICENSE, NOTICE, THIRD_PARTY_LICENSES.txt, README.md, README.ja.md, SECURITY.md dist\Shoji\
+          Compress-Archive -Path dist\Shoji -DestinationPath "$name.zip"
+          (Get-FileHash "$name.zip" -Algorithm SHA256).Hash.ToLower() + "  $name.zip" | Out-File -Encoding ascii "$name.zip.sha256"
+          "name=$name" >> $env:GITHUB_OUTPUT
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.pkg.outputs.name }}
+          path: |
+            ${{ steps.pkg.outputs.name }}.zip
+            ${{ steps.pkg.outputs.name }}.zip.sha256
+
+      - name: Attach to the release
+        if: github.event_name == 'release'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release upload "${{ github.event.release.tag_name }}" `
+            "${{ steps.pkg.outputs.name }}.zip" "${{ steps.pkg.outputs.name }}.zip.sha256" --clobber

@@ -37,29 +37,36 @@ YouTube の動画広告を取り除き、アクセス解析があなたを追い
 | AMP の無効化 | Google AMP のページを元サイトの通常ページで開きます |
 | 統計レポート | 広告・トラッカー・ポップアップ・動画広告のブロック数、節約した通信量と短縮時間の推定、上位ドメイン、グラフ、CSV 出力 |
 
-## 必要なもの
-
-- Windows 10 / 11
-- [Python 3.12 以上](https://www.python.org/downloads/)（インストール時に「Add python.exe to PATH」にチェック）
-
 ## インストール
+
+### Windows アプリ版（おすすめ・Python 不要）
+
+1. [最新リリース](../../releases/latest) から **`Shoji-<バージョン>-windows-x64.zip`** をダウンロードし、好きな場所に展開します。
+2. **`Shoji.exe`** を実行すると、タスクトレイに障子のアイコンが出て、ダッシュボード（http://127.0.0.1:8765）が開きます。
+
+まだコード署名をしていないため、初回は「Windows によって PC が保護されました」と表示されることがあります。
+「詳細情報」→「実行」で起動できます。ダウンロードしたファイルは、リリースページの `.sha256` で改ざんがないか確認できます。
+
+### ソースから（Windows 10/11、[Python 3.12 以上](https://www.python.org/downloads/)）
 
 ```bat
 git clone https://github.com/ebipepe/shoji.git
 cd shoji
 install.bat
+start.bat
 ```
 
-または [Releases](../../releases) から ZIP をダウンロードして `install.bat` を実行します。
+`start.bat` はコンソール画面を出さずにタスクトレイで起動します。ログを見ながら動かすときは `start_console.bat` を使います。
 
 ## 使い方
 
-1. **`start.bat`** を実行すると、ダッシュボード（http://127.0.0.1:8765）が開きます。
-2. 初回は Windows が「Shoji Local Filtering CA (this PC only)」を信頼するか確認してきます。**「はい」** を選び、ブラウザを開き直します。
+1. 初回は Windows が「Shoji Local Filtering CA (this PC only)」を信頼するか確認してきます。**「はい」** を選び、ブラウザを開き直します。
+2. **タスクトレイのアイコン**を右クリックすると、一時停止・ダッシュボード・**「Windows の起動時に開始」**・終了ができます。
 3. （アプリ内広告も止める場合）**`set_dns.bat` を右クリック →「管理者として実行」**。元に戻すときは `reset_dns.bat` を使います。
 
-起動中は Windows のプロキシ設定が Shoji に向きます。`Ctrl+C` で終了すると元の設定に戻ります。
-異常終了してネットにつながらなくなったときは **`restore_network.bat`** を実行してください。
+Shoji は Windows のプロキシ設定に**自動構成スクリプト（PAC）**を使います。Shoji が止まったり異常終了したりしても、ブラウザは自動で直接接続に戻るので、ネットが切れることはありません。
+さらに見張り役のプロセスが、異常終了時に元の設定へ戻します（`restore_network.bat` は最後の手段として残しています）。
+設定・統計・ログは、ソース版は `data\`、アプリ版は `%LOCALAPPDATA%\Shoji` に保存されます。
 
 Firefox は独自の証明書ストアを使います。Shoji は初回起動時に、Firefox が Windows の証明書を使う設定を自動で入れるので、そのあと Firefox を一度再起動してください。
 
@@ -84,3 +91,4 @@ HTTPS の中身を処理するため、**その PC 専用のルート証明書**
 
 [Apache License 2.0](LICENSE)。Copyright 2026 The Shoji Authors.
 フィルタリストは実行時に各配布元からダウンロードし、それぞれのライセンスに従います（[NOTICE](NOTICE) を参照）。
+貢献・再配布のルールや exe に同梱しているライブラリのライセンスは [docs/LICENSING.md](docs/LICENSING.md) にまとめています。

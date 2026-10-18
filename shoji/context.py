@@ -34,6 +34,10 @@ class AppContext:
         self.untrusting_file = DATA_DIR / "untrusting_apps.json"
         self.untrusting_apps: set[str] = self._load_json_set(self.untrusting_file)
         self.status: dict = {"proxy": "stopped", "dns": "stopped", "lists": "未読込"}
+        # 一時停止中はフィルタを一切かけず、そのまま通す
+        self.paused = False
+        self.on_pause_change: list = []
+        self.request_exit = None     # 終了を要求する関数（main が設定する）
 
     @property
     def cfg(self) -> dict:
@@ -145,6 +149,14 @@ class AppContext:
             self.https_ready = ready
             self.https_problem = problem
             self._recent_failures.clear()
+
+    def set_paused(self, paused: bool) -> None:
+        self.paused = bool(paused)
+        for cb in list(self.on_pause_change):
+            try:
+                cb(self.paused)
+            except Exception:  # noqa: BLE001
+                pass
 
     def rules_reloaded(self) -> None:
         self.rules_version = str(int(time.time()))

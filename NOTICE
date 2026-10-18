@@ -4,11 +4,23 @@ Copyright 2026 The Shoji Authors
 This product is licensed under the Apache License, Version 2.0 (see LICENSE).
 
 -------------------------------------------------------------------------------
-Third-party software used at runtime (installed separately via pip, not bundled):
+Third-party software
+
+The source distribution installs its dependencies with pip and bundles none of them.
+The Windows executable (Shoji-*-windows-x64.zip) bundles them; their full license and
+NOTICE texts are in THIRD_PARTY_LICENSES.txt inside that archive. Main components:
 
   mitmproxy  - MIT License            https://github.com/mitmproxy/mitmproxy
   dnslib     - BSD 2-Clause License   https://github.com/paulc/dnslib
   Flask      - BSD 3-Clause License   https://github.com/pallets/flask
+  pystray    - LGPL-3.0 (Windows build: shipped as unmodified, replaceable .py files)
+  ldap3      - LGPL-3.0 (dependency of mitmproxy; shipped as unmodified, replaceable .py files)
+  Pillow     - MIT-CMU (HPND)
+  certifi    - MPL-2.0 (unmodified; source at https://github.com/certifi/python-certifi)
+  PyInstaller bootloader - GPL-2.0 with an exception permitting distribution of the bundled program
+
+mitmproxy's terminal UI (urwid) and transparent-mode driver (WinDivert/pydivert) are not used
+and are excluded from the executable.
 
 Filter lists (downloaded at runtime from their maintainers, not bundled):
 

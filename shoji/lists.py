@@ -9,11 +9,20 @@ import time
 import urllib.request
 from pathlib import Path
 
-from .config import LISTS_DIR, RULES_DIR
+from .config import DATA_DIR, LISTS_DIR, RULES_DIR
 from .context import AppContext
 
 BUILTIN = [("builtin_ads.txt", "ad"), ("builtin_trackers.txt", "tracker")]
-USER_RULES = RULES_DIR / "user_rules.txt"
+# ユーザールールは書き込み可能な data 側に置く（exe 版ではインストール先が読み取り専用のため）。
+# 初回は rules/user_rules.txt（説明付きのひな形、または以前のバージョンで書いたルール）をコピーする。
+USER_RULES = DATA_DIR / "user_rules.txt"
+_USER_RULES_TEMPLATE = RULES_DIR / "user_rules.txt"
+
+
+def ensure_user_rules() -> None:
+    if not USER_RULES.exists() and _USER_RULES_TEMPLATE.exists():
+        USER_RULES.parent.mkdir(parents=True, exist_ok=True)
+        USER_RULES.write_text(_USER_RULES_TEMPLATE.read_text(encoding="utf-8"), encoding="utf-8")
 
 
 def _slug(name: str) -> str:
@@ -44,6 +53,7 @@ def load_engine(ctx: AppContext) -> dict:
         p = list_file(e)
         if e.get("enabled", True) and p.exists():
             sources.append((e["name"], p.read_text(encoding="utf-8", errors="replace"), e.get("category", "ad")))
+    ensure_user_rules()
     if USER_RULES.exists():
         # "! category: tracker" 以降の行はトラッカー扱い
         cat, buf, chunks = "ad", [], []
