@@ -15,8 +15,9 @@ IS_WIN = sys.platform == "win32"
 
 # Not needed by Shoji, and kept out of the binary so that no (L)GPL code is linked in:
 #   urwid / mitmproxy.tools.console  - mitmproxy's interactive terminal UI (LGPL-2.1)
-#   pydivert / mitmproxy_windows     - WinDivert, only for mitmproxy's transparent "local" mode (LGPL-3.0)
-EXCLUDED = ["urwid", "mitmproxy.tools.console", "pydivert", "mitmproxy_windows",
+#   pydivert / mitmproxy_windows     - WinDivert, only for mitmproxy's transparent / "local" modes (LGPL-3.0)
+#   mitmproxy.platform.windows       - imports pydivert; replaced by a stub (rthook_no_windivert.py)
+EXCLUDED = ["urwid", "mitmproxy.tools.console", "pydivert", "mitmproxy_windows", "mitmproxy.platform.windows",
             "tkinter", "matplotlib", "numpy", "pytest"]
 
 
@@ -46,6 +47,7 @@ a = Analysis(
     hiddenimports=hidden,
     datas=datas,
     excludes=EXCLUDED,
+    runtime_hooks=[str(ROOT / "packaging" / "rthook_no_windivert.py")],
     # LGPL-licensed libraries are shipped as plain .py files (not inside the archive) so that
     # users can inspect and replace them, as the LGPL requires.
     module_collection_mode={"ldap3": "py", "pystray": "py"},

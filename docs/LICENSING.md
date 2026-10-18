@@ -55,7 +55,7 @@ together with `LICENSE` and `NOTICE`.
 | certifi | MPL-2.0 | Unmodified; source link in NOTICE |
 | pystray, ldap3 | LGPL-3.0 | Shipped as plain, unmodified `.py` files (not inside the archive) so users can inspect and replace them |
 | urwid (mitmproxy console UI) | LGPL-2.1 | Not used; excluded from the build |
-| WinDivert / pydivert (mitmproxy transparent mode) | LGPL-3.0 | Not used; excluded from the build |
+| WinDivert / pydivert (mitmproxy transparent mode) | LGPL-3.0 | Not used; excluded from the build (a small stub replaces the module that would import it) |
 | PyInstaller bootloader | GPL-2.0 with bootloader exception | The exception allows distributing the bundled program under any license |
 
 The exclusions and the LGPL handling are configured in [`packaging/shoji.spec`](../packaging/shoji.spec).

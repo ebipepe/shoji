@@ -62,9 +62,14 @@ jobs:
               if ($s.status.proxy -eq "running") { $ok = $true; break }
             } catch {}
           }
-          Get-Content "$env:SHOJI_DATA\shoji.log" -ErrorAction SilentlyContinue
+          $log = Get-Content "$env:SHOJI_DATA\shoji.log" -Encoding utf8 -ErrorAction SilentlyContinue
+          $log
           Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue
-          if (-not $ok) { throw "Shoji.exe did not start" }
+          if (-not $ok) {
+            # Surface the log as annotations too (visible on the run page and through the API)
+            $log | Select-Object -Last 40 | ForEach-Object { Write-Output "::error title=shoji.log::$_" }
+            throw "Shoji.exe did not start"
+          }
 
       - name: Package
         id: pkg
