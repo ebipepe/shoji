@@ -9,7 +9,7 @@ import threading
 import time
 
 from flask import Flask, Response, jsonify, request, send_file
-from werkzeug.serving import make_server
+from werkzeug.serving import WSGIRequestHandler, make_server
 
 from . import __version__, lists, stats as stats_mod, winsys
 from .config import ASSETS_DIR, STATS_DB
@@ -222,10 +222,19 @@ def create_app(ctx: AppContext) -> Flask:
     return app
 
 
+class _QuietHandler(WSGIRequestHandler):
+    """ダッシュボードは 5 秒ごとに状態を取得するため、成功したアクセスはログに残さない"""
+
+    def log_request(self, code="-", size="-"):
+        if str(code).startswith(("4", "5")):
+            super().log_request(code, size)
+
+
 class DashboardServer:
     def __init__(self, ctx: AppContext):
         d = ctx.cfg["dashboard"]
-        self.server = make_server(d["listen_host"], int(d["listen_port"]), create_app(ctx), threaded=True)
+        self.server = make_server(d["listen_host"], int(d["listen_port"]), create_app(ctx), threaded=True,
+                                  request_handler=_QuietHandler)
         self.url = f"http://{d['listen_host']}:{d['listen_port']}/"
         self.thread = threading.Thread(target=self.server.serve_forever, name="dashboard", daemon=True)
 
