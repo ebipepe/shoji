@@ -37,6 +37,7 @@ Everything happens on your machine. Nothing is sent to any Shoji server, because
 | **Tracker blocking** | EasyPrivacy / AdGuard Tracking Protection at URL and DNS level, plus **CNAME-cloaking** detection. |
 | **App ads** | A built-in DNS server (DNS-over-HTTPS upstream) blocks ad and tracker domains for every app, and for phones on your LAN if you point them at it. |
 | **Cosmetic filtering** | Hides ad slots with ~56k element-hiding rules, then **collapses the empty space** they leave behind. |
+| **Scriptlets** | Runs uBlock Origin-style `##+js(...)` rules (≈3k in the default lists) to defuse anti-adblock walls and ad scripts: `set-constant`, `abort-on-property-read`, `json-prune`, `no-fetch-if`, `no-setTimeout-if`, `remove-attr` and about 25 more. Shoji's own implementation, no uBO code. |
 | **Re-inserted ads** | A MutationObserver removes ads that scripts insert or force back into view. |
 | **Pop-ups** | Blocks pop-ups and pop-unders opened without a real click, script-generated new-tab tricks, and invisible click-hijacking overlays. |
 | **Affiliate banners** | Optionally hides banner images that a site hosts itself and wraps in affiliate links (`rel="sponsored"`, Amazon, Rakuten, A8, …). |

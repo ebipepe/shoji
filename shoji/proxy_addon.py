@@ -20,7 +20,7 @@ from urllib.parse import parse_qs, urlsplit
 from mitmproxy import http, tls
 from mitmproxy.net.http.headers import infer_content_encoding
 
-from . import injector, winsys, youtube
+from . import injector, scriptlets, winsys, youtube
 from .config import BUILTIN_HTTPS_EXCLUSIONS, CERT_DIR, is_whitelisted
 from .context import AppContext
 from .injector import MAGIC_HOST, MAGIC_ORIGIN
@@ -404,8 +404,11 @@ class ShojiAddon:
                 "gen": use_generic,
                 "v": self.ctx.rules_version,
             }
+            calls = (self.engine.scriptlets_for(host)
+                     if F.get("scriptlets", True) and "elemhide" not in flags else [])
             snippet, sh, csh = injector.build_snippet(page_cfg, specific, exceptions, generic_inline,
-                                                      use_generic, self.ctx.rules_version)
+                                                      use_generic, self.ctx.rules_version,
+                                                      scriptlets.build(calls))
             text = injector.inject(text, snippet)
             modified = True
             for name in ("content-security-policy", "content-security-policy-report-only"):

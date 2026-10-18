@@ -68,6 +68,13 @@ not part of this repository or the executable**. They remain under their own lic
 CC BY-SA), are used unmodified, and are credited in NOTICE. Shoji's built-in rules in `rules/` are original
 to this project and licensed under Apache-2.0.
 
+### Scriptlets
+The lists use uBlock Origin's `##+js(...)` syntax to call small in-page functions ("scriptlets"). uBlock
+Origin's and AdGuard's own scriptlet code is GPL-3.0, so Shoji does **not** reuse it:
+[`shoji/assets/scriptlets.js`](../shoji/assets/scriptlets.js) is an independent implementation written from
+the documented behaviour of each scriptlet (name and arguments), under Apache-2.0. Please keep it that way —
+don't paste code from those projects into it.
+
 ---
 
 ## 日本語の要約

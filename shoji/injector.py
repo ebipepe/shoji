@@ -53,7 +53,7 @@ def _sha256(s: str) -> str:
 
 
 def build_snippet(cfg: dict, specific: list[str], exceptions: list[str], generic_inline: list[str],
-                  use_generic: bool, version: str) -> tuple[str, str, str]:
+                  use_generic: bool, version: str, scriptlet_js: str = "") -> tuple[str, str, str]:
     """(埋め込む HTML, script の CSP ハッシュ, style の CSP ハッシュ)"""
     parts = []
     if use_generic:
@@ -70,7 +70,8 @@ def build_snippet(cfg: dict, specific: list[str], exceptions: list[str], generic
     parts.append(f'<style id="shoji-css">{css}</style>')
     cfg_json = json.dumps(cfg, ensure_ascii=False, separators=(",", ":"))
     cfg_json = cfg_json.replace("<", "\\u003c").replace("\u2028", "\\u2028").replace("\u2029", "\\u2029")
-    js = js_ascii(_CONTENT_JS.replace(_PLACEHOLDER, cfg_json))
+    # スクリプトレットはページのスクリプトより先に動く必要があるため、同じ <script> の先頭に置く
+    js = js_ascii(scriptlet_js + _CONTENT_JS.replace(_PLACEHOLDER, cfg_json))
     script_hash = _sha256(js)
     parts.append(f"<script>{js}</script>")
     return "".join(parts), script_hash, style_hash

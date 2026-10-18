@@ -105,6 +105,17 @@ Shoji（旧名 `koukoku_blocker`）の各ファイルの目的・設計思想と
   - データの保存先は、exe 版では `%LOCALAPPDATA%\Shoji`（exe の置き場所に書き込めないことがあるため）。
 - **ライセンス対応**: exe には LICENSE・NOTICE・同梱ライブラリのライセンス全文（`THIRD_PARTY_LICENSES.txt`）を同梱。LGPL のライブラリ（pystray、ldap3）は差し替え可能な .py のまま同梱し、LGPL の urwid・WinDivert は除外。方針は `docs/LICENSING.md` にまとめた。
 
+### v0.3 開発中 — スクリプトレット対応と海外の銀行（2026-10-18 午後）
+- **海外の銀行・決済サイトを復号の対象外に**: 英語圏で紹介する前提で、米英欧豪の主な銀行・証券・決済・パスワード管理サービスを内蔵の除外リストに追加した。
+  - 内蔵リストは常に適用し、ダッシュボードの一覧は利用者の追加分だけにした（設定ファイルに古い既定値が残っていても新しい内蔵分が効くように）。
+- **スクリプトレット（`##+js(...)`）に対応**: 標準のリストにある約 3,500 件のうち約 2,900 件（96%）が動くようになった。
+  - uBlock Origin・AdGuard のスクリプトレットは GPL のため、コードは一切使わず、各スクリプトレットの名前・引数・動作の説明だけをもとに `shoji/assets/scriptlets.js` を独自に書いた。
+  - ページのスクリプトより先に動かす必要があるため、既存の埋め込みスクリプトの先頭に入れ、CSP のハッシュもまとめて計算する。
+  - 実際の Chromium で動作を確かめるテスト（`tests/test_scriptlets_browser.py`）と、プロキシ経由・CSP 付きページでの通し試験を行った。
+  - 未対応: `trusted-*`（信頼できるリスト専用で危険度が高い）、`popads-dummy` など利用の少ないもの。
+- **ダッシュボードのアクセスログを抑制**: 5 秒ごとの状態取得が `shoji.log` を埋めていたため、成功したアクセスは記録しないようにした。
+- **exe ビルドの修正**: mitmproxy が Windows で起動時に読み込む WinDivert 関連のモジュール（LGPL のため同梱していない）を、小さな代替品で置き換えた。
+
 ---
 
 ## 3. ファイル一覧
@@ -147,6 +158,10 @@ Shoji（旧名 `koukoku_blocker`）の各ファイルの目的・設計思想と
 | `docs/DEVELOPMENT_HISTORY.md` | 10/18 | v0.1 / v0.2 | 本ファイル |
 | `docs/LICENSING.md` | 10/18 13:30 | v0.2 | Apache License 2.0 と同梱ライブラリのライセンスの扱い |
 | `shoji/tray.py` | 10/18 | v0.2 | タスクトレイのアイコンとメニュー |
+| `shoji/scriptlets.py` | 10/18 | v0.3 | `##+js(...)` ルールの解釈と、ページに埋め込むスクリプトの組み立て |
+| `shoji/assets/scriptlets.js` | 10/18 | v0.3 | スクリプトレット本体（Shoji 独自の実装） |
+| `packaging/rthook_no_windivert.py` | 10/18 | v0.2 | exe 版で WinDivert 関連モジュールの代わりに読み込む代替品 |
+| `tests/test_scriptlets_browser.py` | 10/18 | v0.3 | スクリプトレットを実際のブラウザで動かすテスト |
 | `shoji/assets/icon-64.png` / `icon.ico` | 10/18 | v0.2 | トレイ用アイコン |
 | `start_console.bat` | 10/18 | v0.2 | コンソール画面つきで起動（ログ確認用）。`start.bat` はトレイのみで起動するようにした |
 | `packaging/shoji.spec` | 10/18 | v0.2 | exe 化の設定（PyInstaller）。LGPL ライブラリの扱いもここで指定 |

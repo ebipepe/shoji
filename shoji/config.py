@@ -47,6 +47,7 @@ DEFAULT_CONFIG: dict = {
         "block_trackers": True,         # トラッカーブロック
         "youtube_ads": True,            # YouTube 等の動画広告ブロック
         "cosmetic": True,               # 要素非表示（広告枠）
+        "scriptlets": True,             # スクリプトレット（##+js(...) ルール）
         "collapse_space": True,         # 広告削除後のスペース調整
         "anti_reinsertion": True,       # 再挿入された広告をブロック
         "block_popups": True,           # ポップアップ・ウィンドウの非表示化
@@ -108,7 +109,7 @@ DEFAULT_CONFIG: dict = {
     "update_interval_hours": 24,
     # 許可リスト（ここに入れたサイトではフィルタしない）
     "whitelist": [],
-    # HTTPS を復号しないホスト（銀行・証明書ピンニングのアプリ等）。サフィックス一致
+    # HTTPS を復号しないホスト（銀行・証明書ピンニングのアプリ等）。サフィックス一致。
     # 利用者が追加する除外先（内蔵の除外先 BUILTIN_HTTPS_EXCLUSIONS は常に適用される）
     "https_exclusions": [],
 }

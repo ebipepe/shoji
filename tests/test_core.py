@@ -123,6 +123,25 @@ def test_builtin_https_exclusions():
     assert len(set(BUILTIN_HTTPS_EXCLUSIONS)) == len(BUILTIN_HTTPS_EXCLUSIONS)
 
 
+def test_scriptlets():
+    from shoji import scriptlets
+    from shoji.filters import FilterEngine
+    assert scriptlets.parse("+js(aopr.js, foo)") == ("abort-on-property-read", ("foo",))
+    assert scriptlets.parse("+js(unknown-thing, 1)") is None
+    assert scriptlets.split_args(r"a, b\, c, 'd, e'") == ["a", "b, c", "d, e"]
+    e = FilterEngine()
+    e.load([("t", "example.com,~sub.example.com##+js(set, ads, false)\n"
+                  "example.*##+js(nostif, adb)\n"
+                  "example.com#@#+js(nostif, adb)\n"
+                  "other.org##+js(nowoif)\nother.org#@#+js()\n", "ad")])
+    assert e.scriptlets_for("www.example.com") == [("set-constant", ("ads", "false"))]
+    assert e.scriptlets_for("sub.example.com") == []
+    assert e.scriptlets_for("example.de") == [("no-setTimeout-if", ("adb",))]
+    assert e.scriptlets_for("other.org") == []
+    js = scriptlets.build(e.scriptlets_for("www.example.com"))
+    assert js.startswith("(function(){") and '"set-constant"' in js and "</" not in js
+
+
 if __name__ == "__main__":
     for name, fn in list(globals().items()):
         if name.startswith("test_"):

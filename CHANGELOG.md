@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+- Scriptlet support: uBlock Origin-style `##+js(...)` rules, about 30 scriptlets and their aliases
+  (`set-constant`, `abort-on-property-read/write`, `abort-current-script`, `json-prune`, `no-fetch-if`,
+  `no-xhr-if`, `no-setTimeout-if`, `addEventListener-defuser`, `no-window-open-if`, `remove-attr`,
+  `remove-class`, `remove-node-text`, `href-sanitizer`, `set-cookie`, `set-local-storage-item`, …),
+  with `#@#+js(...)` exceptions and `example.*` domains. Written independently for Shoji (Apache-2.0);
+  `trusted-*` scriptlets are not supported. Can be turned off in the dashboard.
+- Element-hiding rules for `example.*` (any TLD) domains now apply.
+
 ### Changed
 - Built-in list of sites that are never decrypted, now covering major banks, brokers, payment services and
   password managers in Japan, the US, the UK, Europe and Australia. It always applies; the dashboard list is

@@ -19,6 +19,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Iterable, Optional
 
+from . import scriptlets
+
 # --------------------------------------------------------------------------
 # ドメインユーティリティ
 # --------------------------------------------------------------------------
@@ -48,6 +50,19 @@ def is_third_party(req_host: str, page_host: str) -> bool:
     if not page_host:
         return False
     return registrable_domain(req_host) != registrable_domain(page_host)
+
+
+def cosmetic_keys(host: str) -> list[str]:
+    """要素非表示・スクリプトレットを引くキー。ドメインの後ろ側に加え、example.* 形式（全 TLD）も含める"""
+    out = []
+    for s in host_suffixes(host):
+        out.append(s)
+        labels = s.split(".")
+        if len(labels) >= 2:
+            out.append(".".join(labels[:-1]) + ".*")
+        if len(labels) >= 3:
+            out.append(".".join(labels[:-2]) + ".*")
+    return list(dict.fromkeys(out))
 
 
 def host_suffixes(host: str) -> Iterable[str]:
@@ -327,6 +342,9 @@ class FilterEngine:
         self.counts = defaultdict(int)
         self._badfilters: set[str] = set()
         self._generic_css_cache: Optional[str] = None
+        # スクリプトレット: ドメイン（"" は全サイト） -> [(名前, 引数, 除外ドメイン)]
+        self.scriptlets: dict[str, list] = defaultdict(list)
+        self.scriptlet_exc: dict[str, set[str]] = defaultdict(set)   # ドメイン -> {key} （"" は全部無効）
 
     # ------------------------------------------------------------ 読み込み
     def load(self, sources: list[tuple[str, str, str]]) -> None:
@@ -371,6 +389,9 @@ class FilterEngine:
         self.counts["dns"] += 1
 
     def _parse_cosmetic(self, domains: str, sep: str, body: str):
+        if sep in ("##", "#@#") and body.startswith("+js("):
+            self._parse_scriptlet(domains, sep == "#@#", body)
+            return
         if sep not in ("##", "#@#"):
             self.counts["cosmetic_unsupported"] += 1  # スクリプトレット / HTML フィルタ等
             return
@@ -390,6 +411,26 @@ class FilterEngine:
             for d in include:
                 (self.specific_exc if exc else self.specific_hide)[d].add(body)
         self.counts["cosmetic"] += 1
+
+    def _parse_scriptlet(self, domains: str, exc: bool, body: str):
+        parsed = scriptlets.parse(body)
+        if parsed is None:
+            self.counts["scriptlet_unsupported"] += 1
+            return
+        name, args = parsed
+        doms = [d.strip().lower() for d in domains.split(",") if d.strip()]
+        include = [d for d in doms if not d.startswith("~")] or [""]
+        exclude = tuple(d[1:] for d in doms if d.startswith("~"))
+        if exc:
+            k = scriptlets.key(name, args) if name else ""
+            for d in include:
+                self.scriptlet_exc[d].add(k)
+            return
+        if not name:
+            return
+        for d in include:
+            self.scriptlets[d].append((name, args, exclude))
+        self.counts["scriptlet"] += 1
 
     def _parse_network(self, line: str, cat: str, pending: list):
         exception = line.startswith("@@")
@@ -644,10 +685,31 @@ class FilterEngine:
         return out
 
     # ------------------------------------------------------------ 要素非表示
+    def scriptlets_for(self, host: str) -> list[tuple[str, tuple[str, ...]]]:
+        """そのサイトで実行するスクリプトレット [(名前, 引数)]"""
+        with self.lock:
+            keys = cosmetic_keys(host)
+            excs: set[str] = set(self.scriptlet_exc.get("", ()))
+            for k in keys:
+                excs |= self.scriptlet_exc.get(k, set())
+            if "" in excs:
+                return []
+            out, seen = [], set()
+            for k in keys + [""]:
+                for name, args, exclude in self.scriptlets.get(k, ()):
+                    sk = scriptlets.key(name, args)
+                    if sk in seen or sk in excs:
+                        continue
+                    if exclude and any(s in exclude for s in host_suffixes(host)):
+                        continue
+                    seen.add(sk)
+                    out.append((name, args))
+            return out
+
     def specific_selectors(self, host: str) -> list[str]:
         with self.lock:
             sels, excs = set(), set(self.generic_hide_exc)
-            for s in host_suffixes(host):
+            for s in cosmetic_keys(host):
                 sels |= self.specific_hide.get(s, set())
                 excs |= self.specific_exc.get(s, set())
             return sorted(sels - excs)
@@ -655,7 +717,7 @@ class FilterEngine:
     def generic_exceptions(self, host: str) -> list[str]:
         with self.lock:
             excs = set()
-            for s in host_suffixes(host):
+            for s in cosmetic_keys(host):
                 excs |= self.specific_exc.get(s, set())
             return sorted(excs & self.generic_hide)
 
@@ -729,7 +791,9 @@ class FilterEngine:
                 "network_rules": self.counts["network"] + len(self.param_rules),
                 "cosmetic_generic": len(self.generic_hide),
                 "cosmetic_specific": sum(len(v) for v in self.specific_hide.values()),
-                "unsupported": self.counts["network_unsupported"] + self.counts["cosmetic_unsupported"],
+                "scriptlets": self.counts["scriptlet"],
+                "unsupported": (self.counts["network_unsupported"] + self.counts["cosmetic_unsupported"]
+                                + self.counts["scriptlet_unsupported"]),
             }
 
 
