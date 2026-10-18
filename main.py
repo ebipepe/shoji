@@ -19,6 +19,7 @@ import subprocess
 import sys
 import threading
 import time
+import traceback
 import webbrowser
 
 from shoji import __version__, lists, winsys
@@ -278,6 +279,7 @@ def main():
             dns.stop()
         stats.close()
 
+    failed = False
     try:
         if args.no_proxy:
             ctx.request_exit = exit_event.set
@@ -295,10 +297,15 @@ def main():
             asyncio.run(runner())
     except KeyboardInterrupt:
         pass
+    except Exception:   # noqa: BLE001 — exe ではエラー画面ではなくログに残す
+        traceback.print_exc()
+        failed = True
     finally:
         print("終了処理中…")
         cleanup()
         print("終了しました。")
+    if failed:
+        sys.exit(1)
 
 
 if __name__ == "__main__":
