@@ -146,6 +146,8 @@ class DnsFilter:
             cat = self.ctx.engine.dns_lookup(name)
             if cat and ((cat == "ad" and F["block_ads"]) or (cat == "tracker" and F["block_trackers"])):
                 stats.record(cat, "dns", name, "dns", detail=f"{QTYPE.get(q.qtype)} from {client}")
+                self.ctx.reqlog.add("blocked", name, name, src="dns", method=str(QTYPE.get(q.qtype)), cat=cat,
+                                    rule=self.ctx.engine.dns_rule_text(name), detail="DNS で名前解決をブロック")
                 return self._blocked_reply(req)
 
         key = (name, q.qtype, q.qclass)
@@ -169,6 +171,9 @@ class DnsFilter:
                     cat = self.ctx.engine.dns_lookup(target)
                     if cat and F["block_trackers"]:
                         stats.record("tracker", "dns", name, "dns", detail=f"CNAME 偽装 → {target}")
+                        self.ctx.reqlog.add("blocked", name, name, src="dns", method=str(QTYPE.get(q.qtype)),
+                                            cat="tracker", rule=self.ctx.engine.dns_rule_text(target),
+                                            detail=f"CNAME で偽装したトラッカー（実体は {target}）")
                         return self._blocked_reply(req)
         if rec.header.rcode == RCODE.NOERROR:
             self._cache_put(key, data, rec)

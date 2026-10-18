@@ -79,6 +79,21 @@ textarea{width:100%;min-height:340px;font-family:ui-monospace,Consolas,monospace
 code{font-family:ui-monospace,Consolas,monospace;font-size:12.5px;background:var(--surface-2);padding:1px 5px;border-radius:4px}
 #toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--text);color:var(--bg);padding:8px 16px;border-radius:8px;display:none;font-size:13px}
 .log td{font-size:12px} .log td.d{color:var(--muted);max-width:420px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#log-table{table-layout:fixed;min-width:860px}
+#log-table td{vertical-align:top;overflow:hidden;text-overflow:ellipsis}
+#log-table td.u{white-space:nowrap} #log-table td.u div{overflow:hidden;text-overflow:ellipsis}
+#log-table .sub{color:var(--muted);font-size:11.5px}
+#log-table td.r{font-family:ui-monospace,Consolas,monospace;font-size:11.5px;word-break:break-all}
+.res{display:inline-block;font-size:11px;padding:1px 8px;border-radius:999px;border:1px solid var(--border);white-space:nowrap}
+.res.blocked{color:#fff;background:var(--bad);border-color:var(--bad)}
+.res.modified{color:var(--warn);border-color:var(--warn)}
+.res.page{color:var(--accent);border-color:var(--accent)}
+.res.allowed{color:var(--good);border-color:var(--good)}
+.res.passed,.res.passthrough{color:var(--muted)}
+.mini{font-size:11.5px;padding:2px 9px}
+#modal{position:fixed;inset:0;background:rgba(0,0,0,.35);display:none;place-items:center;z-index:20}
+#modal .card{width:min(620px,calc(100% - 32px))}
+#modal input{width:100%;font-family:ui-monospace,Consolas,monospace;font-size:12.5px}
 </style>
 </head>
 <body>
@@ -89,6 +104,7 @@ code{font-family:ui-monospace,Consolas,monospace;font-size:12.5px;background:var
 </header>
 <nav id="tabs">
   <button data-tab="stats" class="active">統計レポート</button>
+  <button data-tab="log">フィルタリングログ</button>
   <button data-tab="settings">機能設定</button>
   <button data-tab="stealth">ステルスモード</button>
   <button data-tab="allow">許可リスト</button>
@@ -128,6 +144,27 @@ code{font-family:ui-monospace,Consolas,monospace;font-size:12.5px;background:var
     <table class="log" id="recent"></table>
   </div>
   <p class="muted small">※ 通信量・短縮時間は、ブロックしたリソースの種類ごとの平均サイズから算出した推定値です。</p>
+</section>
+
+<!-- ================= フィルタリングログ ================= -->
+<section id="log">
+  <div class="row">
+    <div class="seg" id="log-filter">
+      <button data-a="" class="active">すべて</button><button data-a="blocked">ブロック</button><button data-a="passed">通過</button><button data-a="modified">変更</button><button data-a="page">ページ処理</button><button data-a="passthrough">復号なし</button><button data-a="allowed">許可</button>
+    </div>
+    <input type="text" id="log-q" placeholder="URL・ドメイン・ルールで絞り込み" style="flex:1;min-width:200px">
+    <button class="btn" id="log-pause">記録を一時停止</button>
+    <button class="btn" id="log-clear">クリア</button>
+  </div>
+  <p class="muted small" id="log-note">直近 3,000 件の通信と、Shoji がそれぞれをどう扱ったかを表示します。記録はこの PC のメモリ上にだけあり、保存も送信もしません（Shoji を終了すると消えます）。
+    「許可」「ブロック」を押すと、ユーザールールに 1 行追加されます。</p>
+  <div class="card" style="padding:0;overflow:auto">
+    <table class="log" id="log-table">
+      <colgroup><col style="width:74px"><col style="width:100px"><col style="width:84px"><col><col style="width:30%"><col style="width:84px"></colgroup>
+      <thead><tr><th>時刻</th><th>結果</th><th>種類</th><th>URL（ページ）</th><th>ルール・詳細</th><th></th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
 </section>
 
 <!-- ================= 機能設定 ================= -->
@@ -229,6 +266,14 @@ code{font-family:ui-monospace,Consolas,monospace;font-size:12.5px;background:var
 </section>
 </main>
 <div id="toast"></div>
+<div id="modal"><div class="card">
+  <h2 id="modal-title">ルールを追加</h2>
+  <p class="muted small" id="modal-desc"></p>
+  <input type="text" id="modal-rule" spellcheck="false">
+  <div class="row" style="margin-top:12px;justify-content:flex-end;margin-bottom:0">
+    <button class="btn" id="modal-cancel">キャンセル</button><button class="btn pri" id="modal-ok">ユーザールールに追加</button>
+  </div>
+</div></div>
 <script>
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -257,7 +302,94 @@ document.querySelectorAll('#tabs button').forEach(b => b.onclick = () => {
   document.querySelectorAll('#tabs button').forEach(x => x.classList.toggle('active', x === b));
   document.querySelectorAll('section').forEach(s => s.classList.toggle('active', s.id === b.dataset.tab));
   if (b.dataset.tab === 'filters') loadFilters();
+  if (b.dataset.tab === 'log') pollLog();
 });
+
+/* ---------- フィルタリングログ ---------- */
+const LOG = {items: [], last: 0, action: '', q: '', paused: false, timer: null};
+const RES_LABEL = {blocked: 'ブロック', passed: '通過', modified: '変更', page: 'ページ処理', passthrough: '復号なし', allowed: '許可'};
+const TYPE_LABEL = {document: 'ページ', sub_frame: 'iframe', script: 'スクリプト', stylesheet: 'CSS', image: '画像',
+  media: 'メディア', font: 'フォント', xmlhttprequest: 'XHR/fetch', websocket: 'WebSocket', ping: 'ビーコン', other: 'その他'};
+function hhmmss(t) { const d = new Date(t * 1000); return d.toTimeString().slice(0, 8); }
+function suggestRule(e) {
+  if (e.action === 'blocked') {
+    if (e.src === 'dns' || !e.page || e.page === e.host) return '@@||' + e.host + '^';
+    return '@@||' + e.host + '^$domain=' + e.page;
+  }
+  if (e.page && e.page === e.host && e.rtype !== 'document') {
+    // サイト自身のファイルはドメインごと止めると壊れやすいので URL で指定する
+    return '||' + e.url.replace(/^https?:\/\//, '').split(/[?#]/)[0];
+  }
+  return '||' + e.host + '^';
+}
+function logRow(e) {
+  const btn = e.action === 'blocked' ? `<button class="btn mini" data-allow="${e.id}">許可</button>`
+    : (e.action === 'passed' || e.action === 'modified') && e.rtype !== 'document' ? `<button class="btn mini" data-block="${e.id}">ブロック</button>` : '';
+  const type = e.src === 'dns' ? 'DNS ' + esc(e.method) : (TYPE_LABEL[e.rtype] || esc(e.method || e.rtype || ''));
+  const page = e.page && e.page !== e.host ? `<div class="sub">${esc(e.page)}</div>` : '';
+  const status = e.status > 0 ? `<span class="sub"> ${e.status}</span>` : (e.status < 0 ? '<span class="sub ng"> エラー</span>' : '');
+  const rule = e.rule ? `<div>${esc(e.rule)}</div>` : '';
+  const detail = e.detail ? `<div class="sub">${esc(e.detail)}</div>` : '';
+  return `<tr><td class="sub">${hhmmss(e.t)}</td><td><span class="res ${e.action}">${RES_LABEL[e.action] || e.action}</span></td>`
+    + `<td class="sub">${type}${status}</td><td class="u" title="${esc(e.url)}"><div>${esc(e.url)}</div>${page}</td>`
+    + `<td class="r">${rule}${detail}</td><td>${btn}</td></tr>`;
+}
+function renderLog() {
+  const q = LOG.q.toLowerCase();
+  const rows = [];
+  for (const e of LOG.items) {
+    if (LOG.action && e.action !== LOG.action) continue;
+    if (q && !(e.url.toLowerCase().includes(q) || e.rule.toLowerCase().includes(q) || (e.page || '').includes(q))) continue;
+    rows.push(logRow(e));
+    if (rows.length >= 400) break;
+  }
+  $('#log-table tbody').innerHTML = rows.join('') || '<tr><td colspan="6" class="muted">まだ記録がありません。ブラウザでページを開くと表示されます。</td></tr>';
+}
+async function pollLog() {
+  clearTimeout(LOG.timer);
+  if (!$('#log').classList.contains('active')) return;
+  try {
+    const r = await api('/api/log?limit=3000&since=' + LOG.last);
+    if (r.last < LOG.last) LOG.items = [];          // Shoji が再起動した
+    if (r.items.length) { LOG.items = r.items.concat(LOG.items).slice(0, 3000); renderLog(); }
+    else if (!LOG.items.length) renderLog();
+    LOG.last = r.last;
+    $('#log-pause').textContent = r.enabled ? '記録を一時停止' : '記録を再開';
+  } catch (e) { /* 再試行 */ }
+  LOG.timer = setTimeout(pollLog, 1500);
+}
+document.querySelectorAll('#log-filter button').forEach(b => b.onclick = () => {
+  document.querySelectorAll('#log-filter button').forEach(x => x.classList.toggle('active', x === b));
+  LOG.action = b.dataset.a; renderLog();
+});
+$('#log-q').oninput = e => { LOG.q = e.target.value.trim(); renderLog(); };
+$('#log-clear').onclick = async () => { await api('/api/log/clear', {}); LOG.items = []; renderLog(); };
+$('#log-pause').onclick = async () => {
+  const on = $('#log-pause').textContent !== '記録を一時停止';
+  const r = await api('/api/log/enabled', {on});
+  $('#log-pause').textContent = r.enabled ? '記録を一時停止' : '記録を再開';
+};
+$('#log-table').onclick = ev => {
+  const b = ev.target.closest('button'); if (!b) return;
+  const id = Number(b.dataset.allow || b.dataset.block);
+  const e = LOG.items.find(x => x.id === id); if (!e) return;
+  const allow = !!b.dataset.allow;
+  $('#modal-title').textContent = allow ? 'この通信を許可する' : 'この通信をブロックする';
+  $('#modal-desc').textContent = allow
+    ? '例外ルールを追加します。$domain= を付けると、そのページの中でだけ許可します。必要なら書き換えてから追加してください。'
+    : 'ブロックするルールを追加します。||ドメイン^ はそのドメインへの通信をすべて止めます。必要なら書き換えてから追加してください。';
+  $('#modal-rule').value = suggestRule(e);
+  $('#modal').style.display = 'grid';
+  $('#modal-rule').focus();
+};
+$('#modal-cancel').onclick = () => { $('#modal').style.display = 'none'; };
+$('#modal').onclick = ev => { if (ev.target.id === 'modal') $('#modal').style.display = 'none'; };
+$('#modal-ok').onclick = async () => {
+  const rule = $('#modal-rule').value.trim(); if (!rule) return;
+  const r = await api('/api/user_rules/add', {rule});
+  $('#modal').style.display = 'none';
+  toast(r.ok ? (r.added ? 'ユーザールールに追加しました。数秒で反映されます（ページを再読み込みしてください）' : 'すでに同じルールがあります') : (r.error || '追加できませんでした'));
+};
 
 /* ---------- 状態 ---------- */
 async function loadStatus() {

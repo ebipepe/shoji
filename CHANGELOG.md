@@ -7,6 +7,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ## [Unreleased]
 
 ### Added
+- Filtering log (dashboard tab): the last 3,000 requests and DNS blocks with the action taken, the matching
+  rule, the page they came from and the response status, filterable and searchable, with one-click
+  Allow / Block buttons that add an editable user rule. Kept in memory only, never written to disk.
 - Scriptlet support: uBlock Origin-style `##+js(...)` rules, about 30 scriptlets and their aliases
   (`set-constant`, `abort-on-property-read/write`, `abort-current-script`, `json-prune`, `no-fetch-if`,
   `no-xhr-if`, `no-setTimeout-if`, `addEventListener-defuser`, `no-window-open-if`, `remove-attr`,

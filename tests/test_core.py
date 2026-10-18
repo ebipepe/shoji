@@ -142,6 +142,19 @@ def test_scriptlets():
     assert js.startswith("(function(){") and '"set-constant"' in js and "</" not in js
 
 
+def test_request_log():
+    from shoji.reqlog import RequestLog
+    log = RequestLog(maxlen=3)
+    for i in range(5):
+        log.add("blocked" if i % 2 else "passed", f"https://ex{i}.com/a.js", f"ex{i}.com", rule="||ex.com^")
+    items = log.query()
+    assert [e["host"] for e in items] == ["ex4.com", "ex3.com", "ex2.com"]
+    assert [e["host"] for e in log.query(action="blocked")] == ["ex3.com"]
+    assert log.query(since=log.last_id()) == []
+    log.enabled = False
+    assert log.add("passed", "x") is None
+
+
 if __name__ == "__main__":
     for name, fn in list(globals().items()):
         if name.startswith("test_"):

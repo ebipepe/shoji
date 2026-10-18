@@ -20,7 +20,7 @@ from urllib.parse import parse_qs, urlsplit
 from mitmproxy import http, tls
 from mitmproxy.net.http.headers import infer_content_encoding
 
-from . import injector, scriptlets, winsys, youtube
+from . import injector, reqlog, scriptlets, winsys, youtube
 from .config import BUILTIN_HTTPS_EXCLUSIONS, CERT_DIR, is_whitelisted
 from .context import AppContext
 from .injector import MAGIC_HOST, MAGIC_ORIGIN
@@ -104,6 +104,22 @@ class ShojiAddon:
             return True
         return self.ctx.is_allowed(host)
 
+    def _passthrough_reason(self, host: str) -> str:
+        cfg = self.ctx.cfg
+        if self.ctx.paused:
+            return "一時停止中"
+        if not cfg["features"].get("https_filtering", True):
+            return "HTTPS フィルタリングがオフ"
+        if not self.ctx.https_ready:
+            return "証明書を確認できるまで HTTPS は復号しない"
+        if host in self.ctx.passthrough_hosts:
+            return "証明書を受け付けなかったため自動で除外"
+        if is_whitelisted(host, BUILTIN_HTTPS_EXCLUSIONS):
+            return "銀行・決済などの内蔵の除外リスト"
+        if is_whitelisted(host, cfg.get("https_exclusions", [])):
+            return "HTTPS を復号しないホスト（利用者の設定）"
+        return "許可リスト"
+
     def _page_flags(self, page_url: str, page_host: str) -> set[str]:
         if self._flag_ver != self.ctx.rules_version:
             self._flag_cache.clear()
@@ -137,12 +153,17 @@ class ShojiAddon:
         F = self.ctx.cfg["features"]
         if cat and ((cat == "ad" and F["block_ads"]) or (cat == "tracker" and F["block_trackers"])):
             self.ctx.stats.record(cat, "proxy", host, "other", detail="CONNECT " + host)
+            self.ctx.reqlog.add(reqlog.BLOCKED, f"https://{host}/", host, method="CONNECT", cat=cat,
+                                rule=self.engine.dns_rule_text(host),
+                                detail="HTTPS を復号しないサイトのため、ドメイン単位でブロック")
             flow.response = http.Response.make(403, b"", {"X-Shoji": "blocked"})
 
     async def tls_clienthello(self, data: tls.ClientHelloData) -> None:
         sni = (data.client_hello.sni or (data.context.server.address or ("",))[0] or "").lower()
         if sni and self._passthrough(sni):
             data.ignore_connection = True
+            self.ctx.reqlog.add(reqlog.PASSTHROUGH, f"https://{sni}/", sni, method="TLS",
+                                detail=self._passthrough_reason(sni))
             return
         # 接続元のアプリを調べる。証明書を受け付けないアプリ（独自の証明書ストアを使うアプリや
         # 証明書ピンニングをするアプリ）は、そのアプリの通信だけ復号せずに通す。
@@ -156,6 +177,8 @@ class ShojiAddon:
                 proc = ""
             if proc and proc in self.ctx.untrusting_apps:
                 data.ignore_connection = True
+                self.ctx.reqlog.add(reqlog.PASSTHROUGH, f"https://{sni}/", sni, method="TLS",
+                                    detail=f"{proc} は証明書を受け付けないアプリのため復号しない")
                 return
             self._client_proc[data.context.client.id] = proc
             if len(self._client_proc) > 5000:
@@ -206,14 +229,24 @@ class ShojiAddon:
             page_host = host
         else:
             page_host = _host_of(req.headers.get("origin", "")) or _host_of(req.headers.get("referer", ""))
-        meta = {"rtype": rtype, "page_host": page_host}
+        meta = {"rtype": rtype, "page_host": page_host, "notes": []}
         flow.metadata["kk"] = meta
+        log = self.ctx.reqlog
+        if host in ("127.0.0.1", "localhost", "::1") and req.port == int(cfg["dashboard"]["listen_port"]):
+            meta["allowed"] = True      # ダッシュボード自身は記録も加工もしない
+            return
+
+        def _log(action, **kw):
+            meta["log"] = log.add(action, url, host, rtype=rtype, method=req.method, page=page_host, **kw)
+
         if self.ctx.paused or self.ctx.is_allowed(host, page_host):
             meta["allowed"] = True
+            _log(reqlog.ALLOWED, detail="一時停止中" if self.ctx.paused else "許可リスト・一時許可")
             return
         if page_host and "document" in self._page_flags(
                 req.headers.get("referer") or f"https://{page_host}/", page_host):
             meta["allowed"] = True
+            _log(reqlog.ALLOWED, detail="このサイトはフィルタの例外ルール（$document）で除外")
             return
 
         # AMP → 通常ページ
@@ -221,6 +254,7 @@ class ShojiAddon:
             target = amp_redirect_url(url)
             if target:
                 stats.record("amp", "proxy", host, count_bytes=False, detail=url)
+                _log(reqlog.MODIFIED, detail="AMP → 通常ページ: " + target)
                 self._respond(flow, 302, b"", "text/plain", {"Location": target})
                 return
 
@@ -231,7 +265,9 @@ class ShojiAddon:
             if removed:
                 stats.record("stealth_param", "proxy", host, count=len(removed), count_bytes=False,
                              detail=",".join(removed))
+                meta["notes"].append("追跡パラメーター除去: " + ", ".join(removed))
                 if rtype == "document":
+                    _log(reqlog.MODIFIED, detail=meta["notes"][-1])
                     self._respond(flow, 302, b"", "text/plain", {"Location": new_url})
                     return
                 req.url = new_url
@@ -243,10 +279,12 @@ class ShojiAddon:
             if rule:
                 cat = self.engine.categorize(host, rule.category)
                 if (cat == "ad" and F["block_ads"]) or (cat == "tracker" and F["block_trackers"]):
+                    _log(reqlog.BLOCKED, rule=rule.raw, cat=cat)
                     return self._block(flow, rule, cat, rtype, host, url)
 
         if S["enabled"]:
             self._stealth_request(flow, host, page_host, rtype, S)
+        _log(reqlog.MODIFIED if meta["notes"] else reqlog.PASSED, detail=" / ".join(meta["notes"]))
 
     def _block(self, flow, rule, cat, rtype, host, url):
         stats = self.ctx.stats
@@ -304,10 +342,18 @@ class ShojiAddon:
             flow.metadata["kk"]["strip_set_cookie"] = True
             if "cookie" in h:
                 del h["cookie"]
+                flow.metadata["kk"]["notes"].append("トラッカーへの Cookie 送信を遮断")
                 self.ctx.stats.record("stealth_cookie", "proxy", host, count_bytes=False,
                                       detail="Cookie 送信を遮断")
         if changed:
             self.ctx.stats.record("stealth_header", "proxy", "", count=1, count_bytes=False)
+
+    def error(self, flow: http.HTTPFlow) -> None:
+        meta = flow.metadata.get("kk")
+        e = meta.get("log") if meta else None
+        if e is not None and flow.error:
+            e["status"] = -1
+            e["detail"] = ((e["detail"] + " / ") if e["detail"] else "") + "接続エラー: " + str(flow.error.msg)[:120]
 
     # ------------------------------------------------------------ レスポンス
     def responseheaders(self, flow: http.HTTPFlow) -> None:
@@ -344,6 +390,8 @@ class ShojiAddon:
     def response(self, flow: http.HTTPFlow) -> None:
         resp = flow.response
         meta = flow.metadata.get("kk")
+        if meta and resp and meta.get("log"):
+            meta["log"]["status"] = resp.status_code
         if not meta or not resp or resp.stream or meta.get("allowed") or flow.request.pretty_host == MAGIC_HOST:
             return
         cfg = self.ctx.cfg
@@ -360,6 +408,9 @@ class ShojiAddon:
                     stats.record("ad", "proxy", host, "media", count=n, detail="YouTube 動画広告 (API)")
                     stats.record("youtube", "proxy", host, "media", count=n, count_bytes=False,
                                  detail=flow.request.path)
+                    self.ctx.reqlog.add(reqlog.MODIFIED, flow.request.pretty_url, host, rtype="xmlhttprequest",
+                                        page=meta.get("page_host", ""), cat="ad",
+                                        detail=f"YouTube の広告データを除去（{n} 件）")
             return
 
         if "text/html" not in ct or resp.status_code != 200 or not resp.content:
@@ -387,6 +438,8 @@ class ShojiAddon:
                 modified = True
                 stats.record("ad", "proxy", host, "media", count=1, detail="YouTube 動画広告 (ページ)")
                 stats.record("youtube", "proxy", host, "media", count=n, count_bytes=False, detail=url[:200])
+                self.ctx.reqlog.add(reqlog.MODIFIED, url, host, rtype="document", page=host, cat="ad",
+                                    detail=f"YouTube の広告データを除去（{n} 件）")
 
         flags = self._page_flags(url, host)
         if "document" not in flags and F["https_filtering"]:
@@ -411,6 +464,16 @@ class ShojiAddon:
                                                       scriptlets.build(calls))
             text = injector.inject(text, snippet)
             modified = True
+            parts = []
+            if specific:
+                parts.append(f"サイト別の要素非表示 {len(specific)} 件")
+            if generic_inline:
+                parts.append(f"汎用の要素非表示 {len(generic_inline)} 件")
+            if calls:
+                names = list(dict.fromkeys(n for n, _ in calls))
+                parts.append(f"スクリプトレット {len(calls)} 件（{', '.join(names[:6])}{' …' if len(names) > 6 else ''}）")
+            self.ctx.reqlog.add(reqlog.PAGE, url, host, rtype=meta["rtype"], page=host,
+                                detail=" / ".join(parts) or "ページ用スクリプトを埋め込み")
             for name in ("content-security-policy", "content-security-policy-report-only"):
                 vals = resp.headers.get_all(name)
                 if vals:

@@ -596,6 +596,14 @@ class FilterEngine:
                     return self.categorize(domain, c)
         return None
 
+    def dns_rule_text(self, domain: str) -> str:
+        """ドメイン単位のブロックに一致したルールの表記（||example.com^）"""
+        with self.lock:
+            for s in host_suffixes(domain):
+                if s in self.dns_block:
+                    return f"||{s}^"
+        return ""
+
     def categorize(self, host: str, default: str = "ad") -> str:
         """広告/トラッカーの分類。両方のリストに載っている場合はマッチしたルールの分類を使う"""
         in_t = in_a = False

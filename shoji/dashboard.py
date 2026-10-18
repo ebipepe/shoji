@@ -99,6 +99,39 @@ def create_app(ctx: AppContext) -> Flask:
             "dns_addr": f"{cfg['dns']['listen_host']}:{cfg['dns']['listen_port']}",
         })
 
+    @app.get("/api/log")
+    def get_log():
+        a = request.args
+        items = ctx.reqlog.query(since=int(a.get("since", "0") or 0), limit=int(a.get("limit", "500") or 500),
+                                 action=a.get("action", ""), q=a.get("q", ""), page=a.get("page", ""))
+        return jsonify({"items": items, "last": ctx.reqlog.last_id(), "enabled": ctx.reqlog.enabled})
+
+    @app.post("/api/log/clear")
+    def clear_log():
+        ctx.reqlog.clear()
+        return jsonify({"ok": True})
+
+    @app.post("/api/log/enabled")
+    def log_enabled():
+        ctx.reqlog.enabled = bool((request.get_json(force=True) or {}).get("on"))
+        return jsonify({"ok": True, "enabled": ctx.reqlog.enabled})
+
+    @app.post("/api/user_rules/add")
+    def add_user_rule():
+        """フィルタリングログから 1 行のルールを追加する"""
+        rule = str((request.get_json(force=True) or {}).get("rule", "")).strip()
+        if not rule or "\n" in rule or "\r" in rule or len(rule) > 2000:
+            return jsonify({"ok": False, "error": "ルールが正しくありません"}), 400
+        p = lists.USER_RULES
+        text = p.read_text(encoding="utf-8") if p.exists() else ""
+        if rule in (line.strip() for line in text.splitlines()):
+            return jsonify({"ok": True, "added": False})
+        if text and not text.endswith("\n"):
+            text += "\n"
+        p.write_text(text + rule + "\n", encoding="utf-8")
+        threading.Thread(target=lists.load_engine, args=(ctx,), daemon=True).start()
+        return jsonify({"ok": True, "added": True})
+
     @app.get("/api/report")
     def report():
         days = int(request.args.get("days", "1") or 0)

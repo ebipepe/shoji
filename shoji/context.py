@@ -9,6 +9,7 @@ import time
 
 from .config import DATA_DIR, Config, is_whitelisted
 from .filters import FilterEngine
+from .reqlog import RequestLog
 from .stats import Stats
 
 
@@ -38,6 +39,8 @@ class AppContext:
         self.paused = False
         self.on_pause_change: list = []
         self.request_exit = None     # 終了を要求する関数（main が設定する）
+        # フィルタリングログ（メモリ上のみ。ディスクには保存しない）
+        self.reqlog = RequestLog()
 
     @property
     def cfg(self) -> dict:
