@@ -158,7 +158,10 @@ code{font-family:ui-monospace,Consolas,monospace;font-size:12.5px;background:var
     </div>
     <div class="card">
       <h2>HTTPS を復号しないホスト</h2>
-      <p class="muted small">銀行・決済・証明書ピンニングを使うアプリ等。ドメイン単位のブロックは引き続き有効です。</p>
+      <p class="muted small">銀行・決済・証明書ピンニングを使うアプリ等。ドメイン単位のブロックは引き続き有効です。
+        国内外の主な銀行・証券・決済・パスワード管理サービス（<span id="bx-count">約 100</span> 件）は、ここに追加しなくても常に対象外です。
+        <a href="#" id="bx-toggle">一覧を表示</a></p>
+      <div class="chips muted small" id="bx" style="display:none"></div>
       <div class="row"><input type="text" id="ex-input" placeholder="bank.example.jp" style="flex:1"><button class="btn pri" id="ex-add">追加</button></div>
       <div class="chips" id="ex"></div>
       <h3>自動で除外されたホスト <button class="btn" id="pt-clear" style="font-size:12px;padding:3px 10px">クリア</button></h3>
@@ -276,6 +279,10 @@ async function loadStatus() {
   PAUSED = !!s.paused;
   $('#st-dns').innerHTML = st.dns === 'running' ? '<span class="ok">DNS サーバー稼働中</span>' : '<span class="ng">DNS サーバー停止中（' + esc(st.dns) + '）</span>';
   $('#proxy-port').textContent = s.proxy_addr.split(':').pop() + ' 番ポート';
+  if (s.builtin_exclusions) {
+    $('#bx-count').textContent = s.builtin_exclusions.length;
+    $('#bx').innerHTML = s.builtin_exclusions.map(h => `<span class="chip">${esc(h)}</span>`).join('');
+  }
   const pts = (s.untrusting_apps || []).map(a => `<span class="chip">アプリ: ${esc(a)}</span>`).concat(s.passthrough_hosts.map(h => `<span class="chip">${esc(h)}</span>`));
   $('#pt').innerHTML = pts.length ? pts.join('') : '<span class="muted small">なし</span>';
   if (st.lists && st.lists.network_rules !== undefined) $('#rule-summary').textContent =
@@ -428,6 +435,7 @@ function addTo(inputSel, key) {
   $(inputSel).value = '';
 }
 $('#wl-add').onclick = () => addTo('#wl-input', 'whitelist');
+$('#bx-toggle').onclick = e => { e.preventDefault(); const b = $('#bx'); b.style.display = b.style.display === 'none' ? '' : 'none'; };
 $('#ex-add').onclick = () => addTo('#ex-input', 'https_exclusions');
 $('#wl-input').onkeydown = e => e.key === 'Enter' && addTo('#wl-input', 'whitelist');
 $('#ex-input').onkeydown = e => e.key === 'Enter' && addTo('#ex-input', 'https_exclusions');

@@ -21,7 +21,7 @@ from mitmproxy import http, tls
 from mitmproxy.net.http.headers import infer_content_encoding
 
 from . import injector, winsys, youtube
-from .config import CERT_DIR, is_whitelisted
+from .config import BUILTIN_HTTPS_EXCLUSIONS, CERT_DIR, is_whitelisted
 from .context import AppContext
 from .injector import MAGIC_HOST, MAGIC_ORIGIN
 from .privacy import (CLIENT_HINT_HEADERS, amp_canonical, amp_redirect_url, generic_user_agent,
@@ -100,7 +100,7 @@ class ShojiAddon:
             return True
         if host in self.ctx.passthrough_hosts:
             return True
-        if is_whitelisted(host, cfg.get("https_exclusions", [])):
+        if is_whitelisted(host, cfg.get("https_exclusions", [])) or is_whitelisted(host, BUILTIN_HTTPS_EXCLUSIONS):
             return True
         return self.ctx.is_allowed(host)
 

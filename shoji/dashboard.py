@@ -12,7 +12,7 @@ from flask import Flask, Response, jsonify, request, send_file
 from werkzeug.serving import WSGIRequestHandler, make_server
 
 from . import __version__, lists, stats as stats_mod, winsys
-from .config import ASSETS_DIR, STATS_DB
+from .config import ASSETS_DIR, BUILTIN_HTTPS_EXCLUSIONS, STATS_DB
 from .context import AppContext
 
 
@@ -94,6 +94,7 @@ def create_app(ctx: AppContext) -> Flask:
             "cert_path": str(winsys.ca_cert_path()),
             "passthrough_hosts": sorted(ctx.passthrough_hosts),
             "untrusting_apps": sorted(ctx.untrusting_apps),
+            "builtin_exclusions": list(BUILTIN_HTTPS_EXCLUSIONS),
             "proxy_addr": f"{p['listen_host']}:{p['listen_port']}",
             "dns_addr": f"{cfg['dns']['listen_host']}:{cfg['dns']['listen_port']}",
         })

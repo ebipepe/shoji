@@ -113,6 +113,16 @@ def test_inject_and_csp():
     assert len(out) == 3 and sh not in out[0] and sh in out[1] and out[2] == "require-trusted-types-for 'script'"
 
 
+def test_builtin_https_exclusions():
+    from shoji.config import BUILTIN_HTTPS_EXCLUSIONS, DEFAULT_CONFIG, is_whitelisted
+    for host in ("www.paypal.com", "secure.chase.com", "s10.kabu.co.jp", "mabanque.bnpparibas", "claude.ai"):
+        assert is_whitelisted(host, BUILTIN_HTTPS_EXCLUSIONS), host
+    for host in ("www.youtube.com", "example.com", "notpaypal.com"):
+        assert not is_whitelisted(host, BUILTIN_HTTPS_EXCLUSIONS), host
+    assert DEFAULT_CONFIG["https_exclusions"] == []
+    assert len(set(BUILTIN_HTTPS_EXCLUSIONS)) == len(BUILTIN_HTTPS_EXCLUSIONS)
+
+
 if __name__ == "__main__":
     for name, fn in list(globals().items()):
         if name.startswith("test_"):

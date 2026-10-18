@@ -109,16 +109,40 @@ DEFAULT_CONFIG: dict = {
     # 許可リスト（ここに入れたサイトではフィルタしない）
     "whitelist": [],
     # HTTPS を復号しないホスト（銀行・証明書ピンニングのアプリ等）。サフィックス一致
-    "https_exclusions": [
-        "apple.com", "icloud.com", "mzstatic.com",
-        "windowsupdate.com", "update.microsoft.com", "login.microsoftonline.com", "login.live.com",
-        "smartscreen.microsoft.com", "dropbox.com", "1password.com", "bitwarden.com",
-        "mufg.jp", "smbc.co.jp", "mizuhobank.co.jp", "rakuten-bank.co.jp", "japannetbank.co.jp",
-        "sbisec.co.jp", "jp-bank.japanpost.jp", "paypay.ne.jp", "bitbank.cc",
-        "anthropic.com", "claude.ai", "github.com", "githubusercontent.com",
-        "pypi.org", "pythonhosted.org", "npmjs.org",
-    ],
+    # 利用者が追加する除外先（内蔵の除外先 BUILTIN_HTTPS_EXCLUSIONS は常に適用される）
+    "https_exclusions": [],
 }
+
+# HTTPS を復号しないサイト（常に適用）。お金・認証情報を扱うサイトと、証明書を厳しく確認する OS/開発系のサービス。
+# ドメイン単位のブロック（DNS・CONNECT 時のホスト判定）は引き続き効く。
+BUILTIN_HTTPS_EXCLUSIONS: tuple[str, ...] = (
+    # OS・アップデート・サインイン
+    "apple.com", "icloud.com", "mzstatic.com",
+    "windowsupdate.com", "update.microsoft.com", "login.microsoftonline.com", "login.live.com",
+    "smartscreen.microsoft.com", "accounts.google.com",
+    # パスワード管理・ストレージ
+    "dropbox.com", "1password.com", "bitwarden.com", "lastpass.com", "dashlane.com", "keepersecurity.com",
+    # 日本の銀行・証券・決済
+    "mufg.jp", "smbc.co.jp", "mizuhobank.co.jp", "rakuten-bank.co.jp", "japannetbank.co.jp", "paypay-bank.co.jp",
+    "resonabank.co.jp", "sonybank.net", "aeonbank.co.jp", "shinseibank.com", "sbishinseibank.co.jp",
+    "netbk.co.jp", "gmo-aozora.com", "jp-bank.japanpost.jp", "jabank.jp", "shinkin.co.jp",
+    "sbisec.co.jp", "rakuten-sec.co.jp", "monex.co.jp", "matsui.co.jp", "kabu.com", "kabu.co.jp",
+    "nomura.co.jp", "daiwa.jp", "smbcnikko.co.jp", "mizuho-sc.com",
+    "paypay.ne.jp", "rakuten-card.co.jp", "smbc-card.com", "jcb.co.jp", "aeon.co.jp",
+    "bitbank.cc", "bitflyer.com", "coincheck.com", "gmo-coin.com",
+    # 海外の主な銀行・証券・決済
+    "paypal.com", "paypalobjects.com", "stripe.com", "stripe.network", "wise.com", "revolut.com",
+    "chase.com", "bankofamerica.com", "wellsfargo.com", "citi.com", "citibank.com", "capitalone.com",
+    "usbank.com", "pnc.com", "americanexpress.com", "discover.com", "ally.com", "sofi.com",
+    "schwab.com", "fidelity.com", "vanguard.com", "etrade.com", "robinhood.com", "interactivebrokers.com",
+    "hsbc.com", "hsbc.co.uk", "barclays.co.uk", "lloydsbank.com", "natwest.com", "santander.co.uk",
+    "monzo.com", "starlingbank.com", "n26.com", "ing.com", "deutsche-bank.de", "bnpparibas",
+    "rbc.com", "td.com", "scotiabank.com", "commbank.com.au", "anz.com", "westpac.com.au", "nab.com.au",
+    "coinbase.com", "kraken.com", "binance.com",
+    # Claude・開発ツール
+    "anthropic.com", "claude.ai", "github.com", "githubusercontent.com",
+    "pypi.org", "pythonhosted.org", "npmjs.org",
+)
 
 
 def _deep_merge(base: dict, override: dict) -> dict:
