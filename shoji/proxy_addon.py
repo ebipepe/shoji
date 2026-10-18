@@ -278,7 +278,8 @@ class ShojiAddon:
             rule = self.engine.match_url(url, host, page_host, rtype)
             if rule:
                 cat = self.engine.categorize(host, rule.category)
-                if (cat == "ad" and F["block_ads"]) or (cat == "tracker" and F["block_trackers"]):
+                if ((cat in ("ad", "annoyance") and F["block_ads"])
+                        or (cat == "tracker" and F["block_trackers"])):
                     _log(reqlog.BLOCKED, rule=rule.raw, cat=cat)
                     return self._block(flow, rule, cat, rtype, host, url)
 

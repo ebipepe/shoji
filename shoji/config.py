@@ -105,6 +105,19 @@ DEFAULT_CONFIG: dict = {
         {"name": "uBlock Privacy", "url": "https://ublockorigin.github.io/uAssets/filters/privacy.txt", "category": "tracker", "enabled": True},
         {"name": "AdGuard DNS filter", "url": "https://adguardteam.github.io/AdGuardSDNSFilter/Filters/filter.txt", "category": "ad", "enabled": True},
         {"name": "Peter Lowe's list", "url": "https://pgl.yoyo.org/adservers/serverlist.php?hostformat=adblockplus&showintro=0&mimetype=plaintext", "category": "ad", "enabled": True},
+        # 迷惑要素（Annoyances）。表示崩れの可能性があるため、最初はオフ
+        {"name": "AdGuard Cookie Notices", "url": "https://filters.adtidy.org/extension/ublock/filters/18.txt", "category": "annoyance", "enabled": False,
+         "desc": "Cookie の同意を求めるバナー・ポップアップを隠す"},
+        {"name": "AdGuard Popups", "url": "https://filters.adtidy.org/extension/ublock/filters/19.txt", "category": "annoyance", "enabled": False,
+         "desc": "メールマガジン登録・お知らせ許可などのページ内ポップアップを隠す"},
+        {"name": "AdGuard Mobile App Banners", "url": "https://filters.adtidy.org/extension/ublock/filters/20.txt", "category": "annoyance", "enabled": False,
+         "desc": "「アプリで開く」などスマホアプリへの誘導バナーを隠す"},
+        {"name": "AdGuard Widgets", "url": "https://filters.adtidy.org/extension/ublock/filters/22.txt", "category": "annoyance", "enabled": False,
+         "desc": "チャット・サポート窓口などの外部ウィジェットを隠す"},
+        {"name": "AdGuard Social Media", "url": "https://filters.adtidy.org/extension/ublock/filters/4.txt", "category": "annoyance", "enabled": False,
+         "desc": "「いいね」「シェア」などの SNS ボタン・埋め込みを隠す"},
+        {"name": "AdGuard Other Annoyances", "url": "https://filters.adtidy.org/extension/ublock/filters/21.txt", "category": "annoyance", "enabled": False,
+         "desc": "その他の迷惑な要素（自サイトの宣伝、コピー禁止など）を隠す"},
     ],
     "update_interval_hours": 24,
     # 許可リスト（ここに入れたサイトではフィルタしない）
@@ -156,6 +169,23 @@ def _deep_merge(base: dict, override: dict) -> dict:
     return out
 
 
+def _with_default_lists(data: dict) -> dict:
+    """新しいバージョンで追加された既定のフィルタリストを、保存済みの設定にも加える（有効/無効は既定のまま）"""
+    have = {e.get("url") for e in data.get("filter_lists", [])}
+    extra = [copy.deepcopy(e) for e in DEFAULT_CONFIG["filter_lists"] if e["url"] not in have]
+    if extra:
+        data["filter_lists"] = list(data.get("filter_lists", [])) + extra
+    # 既定のリストの説明・分類は最新のものを使う
+    defaults = {e["url"]: e for e in DEFAULT_CONFIG["filter_lists"]}
+    for e in data.get("filter_lists", []):
+        d = defaults.get(e.get("url"))
+        if d:
+            for k in ("desc", "category"):
+                if k in d:
+                    e[k] = d[k]
+    return data
+
+
 class Config:
     """スレッドセーフな設定ホルダー。get() で常に最新版を返す。"""
 
@@ -182,7 +212,7 @@ class Config:
         except (OSError, ValueError):
             return False
         with self._lock:
-            self._data = _deep_merge(DEFAULT_CONFIG, user)
+            self._data = _with_default_lists(_deep_merge(DEFAULT_CONFIG, user))
             self._mtime = mtime
         return True
 
@@ -196,7 +226,7 @@ class Config:
             json.dump(data, f, ensure_ascii=False, indent=2)
         os.replace(tmp, self.path)
         with self._lock:
-            self._data = _deep_merge(DEFAULT_CONFIG, data)
+            self._data = _with_default_lists(_deep_merge(DEFAULT_CONFIG, data))
             self._mtime = os.path.getmtime(self.path)
 
     def update(self, patch: dict) -> dict:

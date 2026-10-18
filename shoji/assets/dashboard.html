@@ -60,7 +60,7 @@ td.num{text-align:right;font-variant-numeric:tabular-nums}
 .toggle-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:10px}
 .toggle{display:flex;gap:12px;align-items:flex-start;padding:12px 14px;border:1px solid var(--border);border-radius:10px;background:var(--surface)}
 .toggle .t{font-weight:600} .toggle .d{color:var(--text-2);font-size:12.5px}
-.switch{position:relative;flex:0 0 38px;height:22px;margin-top:2px}
+.switch{position:relative;display:inline-block;flex:0 0 38px;width:38px;height:22px;margin-top:2px}
 .switch input{opacity:0;width:0;height:0}
 .switch span{position:absolute;inset:0;background:var(--border);border-radius:999px;transition:.15s;cursor:pointer}
 .switch span::after{content:"";position:absolute;width:16px;height:16px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.15s}
@@ -213,6 +213,8 @@ code{font-family:ui-monospace,Consolas,monospace;font-size:12.5px;background:var
   <div class="card">
     <div class="row"><h2 style="margin:0">フィルタリスト</h2><span style="flex:1"></span><span class="muted small" id="rule-summary"></span><button class="btn pri" id="update-lists">今すぐ更新</button></div>
     <table id="lists"></table>
+    <p class="muted small" style="margin:8px 0 0">「迷惑要素」のリストは、広告ではないものの邪魔になる要素（Cookie の同意バナー、ページ内ポップアップ、チャットなどのウィジェット等）を隠します。
+      サイトによっては表示が崩れることがあるため、最初はオフにしています。崩れたときは「フィルタリングログ」で原因のルールを確認できます。</p>
   </div>
   <div class="grid two" style="margin-top:12px">
     <div class="card">
@@ -430,7 +432,7 @@ document.querySelectorAll('#period button').forEach(b => b.onclick = () => {
 });
 $('#reset').onclick = async () => { if (confirm('統計をすべて削除しますか？')) { await api('/api/stats/reset', {}); loadReport(); } };
 
-const CAT_LABEL = {ad: '広告', tracker: 'トラッカー', popup: 'ポップアップ', youtube: '動画広告', reinserted: '再挿入広告', cosmetic: '要素非表示', amp: 'AMP 無効化', stealth_param: '追跡パラメーター除去', stealth_cookie: 'Cookie 遮断', stealth_header: '追跡ヘッダー除去'};
+const CAT_LABEL = {ad: '広告', tracker: 'トラッカー', annoyance: '迷惑要素', popup: 'ポップアップ', youtube: '動画広告', reinserted: '再挿入広告', cosmetic: '要素非表示', amp: 'AMP 無効化', stealth_param: '追跡パラメーター除去', stealth_cookie: 'Cookie 遮断', stealth_header: '追跡ヘッダー除去'};
 
 async function loadReport() {
   const r = await api('/api/report?days=' + DAYS);
@@ -587,10 +589,12 @@ async function loadConfig() { CFG = await api('/api/config'); renderConfig(); }
 async function loadFilters() {
   const r = await api('/api/lists');
   $('#lists').innerHTML = '<tr><th>有効</th><th>名前</th><th>分類</th><th>最終更新</th><th class="num">サイズ</th></tr>' + r.lists.map((l, i) =>
-    `<tr><td><label class="switch"><input type="checkbox" data-i="${i}" ${l.enabled ? 'checked' : ''}><span></span></label></td><td>${esc(l.name)}</td><td><span class="tag">${l.category === 'tracker' ? 'トラッカー' : '広告'}</span></td><td>${l.updated ? new Date(l.updated * 1000).toLocaleString('ja-JP') : '<span class="muted">未取得</span>'}</td><td class="num">${l.size ? Math.round(l.size / 1024).toLocaleString() + ' KB' : '-'}</td></tr>`).join('');
+    `<tr><td><label class="switch"><input type="checkbox" data-i="${i}" ${l.enabled ? 'checked' : ''}><span></span></label></td><td>${esc(l.name)}${l.desc ? `<div class="muted small">${esc(l.desc)}</div>` : ''}</td><td><span class="tag">${{tracker: 'トラッカー', annoyance: '迷惑要素'}[l.category] || '広告'}</span></td><td>${l.updated ? new Date(l.updated * 1000).toLocaleString('ja-JP') : '<span class="muted">未取得</span>'}</td><td class="num">${l.size ? Math.round(l.size / 1024).toLocaleString() + ' KB' : '-'}</td></tr>`).join('');
   $('#lists').querySelectorAll('input').forEach(inp => inp.onchange = async () => {
     const fl = CFG.filter_lists.map((l, i) => i === +inp.dataset.i ? Object.assign({}, l, {enabled: inp.checked}) : l);
-    const res = await api('/api/config', {filter_lists: fl}); CFG = res.config; toast('ルールを再読み込みしています…');
+    const res = await api('/api/config', {filter_lists: fl}); CFG = res.config;
+    toast(inp.checked ? 'リストを取得して読み込んでいます（数秒〜十数秒）…' : 'ルールを再読み込みしています…');
+    setTimeout(loadFilters, 9000);
   });
   const u = await api('/api/user_rules'); $('#user-rules').value = u.text;
 }

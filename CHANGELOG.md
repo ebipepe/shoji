@@ -7,6 +7,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ## [Unreleased]
 
 ### Added
+- Optional annoyance lists (off by default): AdGuard Cookie Notices, Popups, Mobile App Banners, Widgets,
+  Social Media and Other Annoyances. Turning one on downloads it right away. Their domains are blocked only
+  inside web pages, never system-wide via DNS. Lists added in new versions now appear in existing setups.
 - Filtering log (dashboard tab): the last 3,000 requests and DNS blocks with the action taken, the matching
   rule, the page they came from and the response status, filterable and searchable, with one-click
   Allow / Block buttons that add an editable user rule. Kept in memory only, never written to disk.

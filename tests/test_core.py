@@ -155,6 +155,30 @@ def test_request_log():
     assert log.add("passed", "x") is None
 
 
+def test_annoyance_lists():
+    import json
+    import tempfile
+    from pathlib import Path
+    from shoji.config import Config
+    from shoji.filters import FilterEngine
+    # 古い設定ファイル（迷惑要素リストが無い）にも新しいリストが加わり、オフのまま
+    with tempfile.TemporaryDirectory() as d:
+        p = Path(d) / "config.json"
+        p.write_text(json.dumps({"filter_lists": [{"name": "EasyList", "url": "https://easylist.to/easylist/easylist.txt",
+                                                   "category": "ad", "enabled": False}]}), encoding="utf-8")
+        cfg = Config(p).get()
+        fl = {e["name"]: e for e in cfg["filter_lists"]}
+        assert fl["EasyList"]["enabled"] is False and "AdGuard Widgets" in fl
+        assert fl["AdGuard Widgets"]["enabled"] is False and fl["AdGuard Widgets"]["category"] == "annoyance"
+    # 迷惑要素のドメインは DNS では止めず、URL 一致の分類は annoyance
+    e = FilterEngine()
+    e.load([("w", "||chat-widget.example^\nexample.com##.cookie-bar\n", "annoyance")])
+    assert e.dns_lookup("chat-widget.example") is None
+    rule = e.match_url("https://chat-widget.example/w.js", "chat-widget.example", "example.com", "script")
+    assert rule and e.categorize("chat-widget.example", rule.category) == "annoyance"
+    assert e.specific_selectors("example.com") == [".cookie-bar"]
+
+
 if __name__ == "__main__":
     for name, fn in list(globals().items()):
         if name.startswith("test_"):

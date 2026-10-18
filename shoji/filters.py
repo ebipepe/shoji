@@ -383,6 +383,9 @@ class FilterEngine:
         d = d.strip(".").lower()
         if not d or "*" in d or d in _DNS_NEVER_BLOCK:
             return
+        if cat == "annoyance":
+            # 迷惑要素リストのドメインは、アプリ全体の DNS では止めない（ブラウザのページ内でだけ扱う）
+            return
         if self.dns_block.get(d) != "tracker":
             self.dns_block[d] = cat
         (self.tracker_hosts if cat == "tracker" else self.ad_hosts).add(d)
@@ -495,7 +498,7 @@ class FilterEngine:
             pm = re.match(r"^\|\|([a-z0-9.\-_]+)\^?\|?$", pattern, re.I)
             if pm:
                 host = pm.group(1).lower()
-                if not exception and rule.removeparam is None and not rule.domains:
+                if not exception and rule.removeparam is None and not rule.domains and cat != "annoyance":
                     (self.tracker_hosts if cat == "tracker" else self.ad_hosts).add(host)
                 if (not types and not rule.domains and not rule.not_domains
                         and rule.removeparam is None

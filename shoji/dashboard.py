@@ -173,7 +173,11 @@ def create_app(ctx: AppContext) -> Flask:
         reload_lists = "filter_lists" in patch
         ctx.config.update(patch)
         if reload_lists:
-            threading.Thread(target=lists.load_engine, args=(ctx,), daemon=True).start()
+            def _reload():
+                # 新しく有効にしたリストがまだ無ければダウンロードしてから読み込む
+                if not lists.update_lists(ctx):
+                    lists.load_engine(ctx)
+            threading.Thread(target=_reload, daemon=True).start()
         return jsonify({"ok": True, "config": ctx.cfg})
 
     @app.get("/api/user_rules")
