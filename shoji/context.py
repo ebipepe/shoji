@@ -29,7 +29,7 @@ class AppContext:
         self._tls_ok_hosts: set[str] = set()   # 一度でも正常に復号できたホスト
         # ルート証明書がブラウザに信頼されていることを確認できるまで HTTPS は復号しない
         self.https_ready = False
-        self.https_problem = "証明書の確認中"
+        self.https_problem = "https.checking"   # i18n のキー
         self.cert_verified = False   # Windows の証明書ストアに登録済みと確認できたか
         # 証明書を受け付けないアプリ（プロセス名）。このアプリの通信は復号しない
         self.untrusting_file = DATA_DIR / "untrusting_apps.json"
@@ -38,6 +38,7 @@ class AppContext:
         # 一時停止中はフィルタを一切かけず、そのまま通す
         self.paused = False
         self.on_pause_change: list = []
+        self.on_ui_change: list = []    # 表示言語など、画面に関わる設定が変わったとき
         self.request_exit = None     # 終了を要求する関数（main が設定する）
         # フィルタリングログ（メモリ上のみ。ディスクには保存しない）
         self.reqlog = RequestLog()
@@ -130,7 +131,7 @@ class AppContext:
             # 短時間に多数のサイトで拒否された = 証明書がインストールされていない/信頼されていない
             if len(distinct) >= 6 and not self.cert_verified:
                 self.https_ready = False
-                self.https_problem = "ブラウザが証明書を信頼していません（証明書を再インストールしてください）"
+                self.https_problem = "https.untrusted"
                 for h in distinct:
                     self.passthrough_hosts.discard(h)
                 self._recent_failures.clear()

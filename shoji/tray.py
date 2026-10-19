@@ -13,6 +13,7 @@ from typing import Callable
 from . import winsys
 from .config import ASSETS_DIR, LOG_PATH
 from .context import AppContext
+from .i18n import t
 
 
 def _load_icon(paused: bool = False):
@@ -38,14 +39,14 @@ class Tray:
         import pystray
         Item = pystray.MenuItem
         return pystray.Menu(
-            Item("ダッシュボードを開く", self._open_dashboard, default=True),
-            Item(lambda _: "フィルタを再開" if self.ctx.paused else "フィルタを一時停止", self._toggle_pause),
+            Item(lambda _: t("tray.open"), self._open_dashboard, default=True),
+            Item(lambda _: t("tray.resume") if self.ctx.paused else t("tray.pause"), self._toggle_pause),
             pystray.Menu.SEPARATOR,
-            Item("Windows の起動時に開始", self._toggle_autostart,
+            Item(lambda _: t("tray.autostart"), self._toggle_autostart,
                  checked=lambda _: winsys.get_autostart()),
-            Item("ログを開く", lambda: winsys.open_path(LOG_PATH)),
+            Item(lambda _: t("tray.log"), lambda: winsys.open_path(LOG_PATH)),
             pystray.Menu.SEPARATOR,
-            Item("Shoji を終了", self._exit),
+            Item(lambda _: t("tray.quit"), self._exit),
         )
 
     def _open_dashboard(self, *_):
@@ -68,7 +69,7 @@ class Tray:
             return
         paused = self.ctx.paused
         self.icon.icon = _load_icon(paused)
-        self.icon.title = "Shoji（一時停止中）" if paused else "Shoji — 広告・トラッカーをブロック中"
+        self.icon.title = t("tray.title.paused") if paused else t("tray.title")
         self.icon.update_menu()
 
     def start(self) -> bool:
@@ -77,9 +78,9 @@ class Tray:
         except ImportError:
             print("[tray] pystray が見つからないため、タスクトレイには表示しません（pip install pystray pillow）")
             return False
-        self.icon = pystray.Icon("Shoji", _load_icon(self.ctx.paused), "Shoji — 広告・トラッカーをブロック中",
-                                 menu=self._menu())
+        self.icon = pystray.Icon("Shoji", _load_icon(self.ctx.paused), t("tray.title"), menu=self._menu())
         self.ctx.on_pause_change.append(lambda _p: self.refresh())
+        self.ctx.on_ui_change.append(self.refresh)          # 表示言語の変更
         threading.Thread(target=self.icon.run, name="tray", daemon=True).start()
         return True
 

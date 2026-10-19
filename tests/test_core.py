@@ -223,8 +223,32 @@ def test_security_lists():
     assert rule and e.categorize("phish.example", rule.category) == "security"
     F = {"block_ads": False, "block_trackers": False, "block_malware": True}
     assert _should_block("security", F) and not _should_block("ad", F)
+    from shoji import i18n
+    i18n.configure(lambda: {"app": {"language": "ja"}})
     html = blocked_page_html("https://evil.example/", "evil.example", "security", "||evil.example^")
     assert "危険なサイト" in html and "window.close" not in html     # 危険サイトの警告は自動で閉じない
+    i18n.configure(lambda: {"app": {"language": "en"}})
+    assert "Dangerous site blocked" in blocked_page_html("https://evil.example/", "evil.example", "security", "r")
+
+
+def test_i18n():
+    import json
+    import re
+    from shoji import i18n
+    for key, entry in i18n.MESSAGES.items():
+        assert set(entry) == {"ja", "en"} and all(entry.values()), key
+        # 差し込み {name} が両方の言語でそろっている
+        assert set(re.findall(r"{(\w+)}", entry["ja"])) == set(re.findall(r"{(\w+)}", entry["en"])), key
+    i18n.configure(lambda: {"app": {"language": "en"}})
+    assert i18n.lang() == "en" and i18n.t("tray.quit") == "Quit Shoji"
+    i18n.configure(lambda: {"app": {"language": "auto"}})
+    assert i18n.lang() in ("ja", "en") and i18n.setting() == "auto"
+    # ダッシュボードの辞書も、日本語と英語で同じキーを持つ
+    src = (Path(__file__).resolve().parent.parent / "shoji" / "assets" / "i18n.js").read_text(encoding="utf-8")
+    ja = set(re.findall(r"'([a-z0-9_.]+)':", src.split("\n  en: {")[0]))
+    en = set(re.findall(r"'([a-z0-9_.]+)':", src.split("\n  en: {")[1]))
+    assert ja == en and len(ja) > 200, (ja ^ en)
+    json.dumps(sorted(ja))
 
 
 if __name__ == "__main__":

@@ -83,6 +83,7 @@ DEFAULT_CONFIG: dict = {
     "app": {
         "tray": True,                   # タスクトレイに常駐する
         "open_dashboard_on_start": True,
+        "language": "auto",             # 表示言語: auto（Windows の表示言語に従う） / ja / en
     },
     "dns": {
         "listen_host": "127.0.0.1",     # LAN の他端末(スマホ等)からも使う場合は 0.0.0.0
@@ -107,25 +108,34 @@ DEFAULT_CONFIG: dict = {
         {"name": "AdGuard DNS filter", "url": "https://adguardteam.github.io/AdGuardSDNSFilter/Filters/filter.txt", "category": "ad", "enabled": True},
         # 危険なサイト（malware-filter は CC0、NoCoin は MIT）
         {"name": "Malicious URL Blocklist (URLhaus)", "url": "https://malware-filter.gitlab.io/malware-filter/urlhaus-filter-ag-online.txt",
-         "category": "security", "enabled": True, "desc": "マルウェアを配布している URL（abuse.ch URLhaus のデータ）"},
+         "category": "security", "enabled": True, "desc": "マルウェアを配布している URL（abuse.ch URLhaus のデータ）",
+         "desc_en": "URLs that spread malware (abuse.ch URLhaus data)"},
         {"name": "Phishing URL Blocklist", "url": "https://malware-filter.gitlab.io/malware-filter/phishing-filter-ag.txt",
-         "category": "security", "enabled": True, "desc": "フィッシング（偽のログイン画面など）サイト"},
+         "category": "security", "enabled": True, "desc": "フィッシング（偽のログイン画面など）サイト",
+         "desc_en": "Phishing sites (fake login pages and similar)"},
         {"name": "NoCoin Filter List", "url": "https://raw.githubusercontent.com/hoshsadiq/adblock-nocoin-list/master/nocoin.txt",
-         "category": "security", "enabled": True, "desc": "ブラウザで勝手に仮想通貨を採掘するスクリプト"},
+         "category": "security", "enabled": True, "desc": "ブラウザで勝手に仮想通貨を採掘するスクリプト",
+         "desc_en": "Scripts that mine cryptocurrency in your browser"},
         {"name": "Peter Lowe's list", "url": "https://pgl.yoyo.org/adservers/serverlist.php?hostformat=adblockplus&showintro=0&mimetype=plaintext", "category": "ad", "enabled": True},
         # 迷惑要素（Annoyances）。表示崩れの可能性があるため、最初はオフ
         {"name": "AdGuard Cookie Notices", "url": "https://filters.adtidy.org/extension/ublock/filters/18.txt", "category": "annoyance", "enabled": False,
-         "desc": "Cookie の同意を求めるバナー・ポップアップを隠す"},
+         "desc": "Cookie の同意を求めるバナー・ポップアップを隠す",
+         "desc_en": "Hides cookie consent banners and pop-ups"},
         {"name": "AdGuard Popups", "url": "https://filters.adtidy.org/extension/ublock/filters/19.txt", "category": "annoyance", "enabled": False,
-         "desc": "メールマガジン登録・お知らせ許可などのページ内ポップアップを隠す"},
+         "desc": "メールマガジン登録・お知らせ許可などのページ内ポップアップを隠す",
+         "desc_en": "Hides in-page pop-ups such as newsletter sign-ups and notification prompts"},
         {"name": "AdGuard Mobile App Banners", "url": "https://filters.adtidy.org/extension/ublock/filters/20.txt", "category": "annoyance", "enabled": False,
-         "desc": "「アプリで開く」などスマホアプリへの誘導バナーを隠す"},
+         "desc": "「アプリで開く」などスマホアプリへの誘導バナーを隠す",
+         "desc_en": "Hides \"open in the app\" banners"},
         {"name": "AdGuard Widgets", "url": "https://filters.adtidy.org/extension/ublock/filters/22.txt", "category": "annoyance", "enabled": False,
-         "desc": "チャット・サポート窓口などの外部ウィジェットを隠す"},
+         "desc": "チャット・サポート窓口などの外部ウィジェットを隠す",
+         "desc_en": "Hides third-party widgets such as chat and support boxes"},
         {"name": "AdGuard Social Media", "url": "https://filters.adtidy.org/extension/ublock/filters/4.txt", "category": "annoyance", "enabled": False,
-         "desc": "「いいね」「シェア」などの SNS ボタン・埋め込みを隠す"},
+         "desc": "「いいね」「シェア」などの SNS ボタン・埋め込みを隠す",
+         "desc_en": "Hides social buttons and embeds (Like, Share, …)"},
         {"name": "AdGuard Other Annoyances", "url": "https://filters.adtidy.org/extension/ublock/filters/21.txt", "category": "annoyance", "enabled": False,
-         "desc": "その他の迷惑な要素（自サイトの宣伝、コピー禁止など）を隠す"},
+         "desc": "その他の迷惑な要素（自サイトの宣伝、コピー禁止など）を隠す",
+         "desc_en": "Hides other annoyances (self-promotion, copy blocking, …)"},
     ],
     "update_interval_hours": 24,
     # 許可リスト（ここに入れたサイトではフィルタしない）
@@ -188,7 +198,7 @@ def _with_default_lists(data: dict) -> dict:
     for e in data.get("filter_lists", []):
         d = defaults.get(e.get("url"))
         if d:
-            for k in ("desc", "category"):
+            for k in ("desc", "desc_en", "category"):
                 if k in d:
                     e[k] = d[k]
     return data

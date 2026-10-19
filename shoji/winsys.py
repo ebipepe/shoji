@@ -10,6 +10,7 @@ import subprocess
 import sys
 
 from .config import CERT_DIR, DATA_DIR
+from .i18n import t
 
 IS_WIN = sys.platform == "win32"
 SAVED = DATA_DIR / "saved_network.json"
@@ -150,9 +151,9 @@ def _ps(cmd: str) -> subprocess.CompletedProcess:
 def set_system_dns() -> tuple[bool, str]:
     """有効なネットワークアダプターの DNS を 127.0.0.1 / ::1 にする（管理者権限が必要）"""
     if not IS_WIN:
-        return False, "Windows 専用の機能です"
+        return False, t("win.only")
     if not is_admin():
-        return False, "管理者権限が必要です（set_dns.bat を「管理者として実行」してください）"
+        return False, t("win.admin_set")
     r = _ps("Get-NetAdapter | Where-Object Status -eq 'Up' | ForEach-Object { "
             "Set-DnsClientServerAddress -InterfaceIndex $_.ifIndex -ServerAddresses ('127.0.0.1','::1') }; "
             "Clear-DnsClientCache")
@@ -160,21 +161,21 @@ def set_system_dns() -> tuple[bool, str]:
         s = _load_saved()
         s["dns"] = True
         _save(s)
-        return True, "DNS を 127.0.0.1 に設定しました"
+        return True, t("win.dns_set")
     return False, r.stderr.strip()[:500]
 
 
 def reset_system_dns() -> tuple[bool, str]:
     if not IS_WIN:
-        return False, "Windows 専用の機能です"
+        return False, t("win.only")
     if not is_admin():
-        return False, "管理者権限が必要です（reset_dns.bat を「管理者として実行」してください）"
+        return False, t("win.admin_reset")
     r = _ps("Get-NetAdapter | ForEach-Object { Set-DnsClientServerAddress -InterfaceIndex $_.ifIndex "
             "-ResetServerAddresses }; Clear-DnsClientCache")
     s = _load_saved()
     s.pop("dns", None)
     _save(s)
-    return r.returncode == 0, (r.stderr.strip()[:500] or "DNS を自動取得に戻しました")
+    return r.returncode == 0, (r.stderr.strip()[:500] or t("win.dns_reset"))
 
 
 def system_dns_is_local() -> bool:
@@ -203,15 +204,15 @@ def install_ca_cert() -> tuple[bool, str]:
     """HTTPS フィルタリング用のルート証明書を「現在のユーザー」の信頼済みストアに登録する"""
     p = ca_cert_path()
     if not p.exists():
-        return False, "証明書がまだ生成されていません（一度起動してください）"
+        return False, t("cert.missing")
     if not IS_WIN:
         return False, f"証明書を手動でインストールしてください: {p}"
     r = subprocess.run(["certutil", "-user", "-addstore", "Root", str(p)], capture_output=True,
                        text=True, timeout=120, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
     if r.returncode == 0 and ca_cert_installed_fresh():
-        return True, "証明書をインストールしました。ブラウザ（Edge）をいったん全部閉じてから開き直してください"
+        return True, t("cert.installed")
     if r.returncode == 0:
-        return False, "証明書の登録がキャンセルされたか、確認できませんでした。もう一度お試しください"
+        return False, t("cert.cancelled")
     return False, (r.stdout + r.stderr).strip()[:500]
 
 
@@ -260,7 +261,7 @@ def _ca_subject() -> str:
 
 def uninstall_ca_cert() -> tuple[bool, str]:
     if not IS_WIN:
-        return False, "Windows 専用の機能です"
+        return False, t("win.only")
     name = "Shoji Local Filtering CA (this PC only)" if _shoji_named_ca() else "mitmproxy"
     r = subprocess.run(["certutil", "-user", "-delstore", "Root", name], capture_output=True,
                        text=True, timeout=60, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))

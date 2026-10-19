@@ -3,8 +3,27 @@
  * Alt+Shift+H で起動し、隠したい部分をクリックすると「このサイトだけで隠す」ルールを作って保存する。
  * 画面の部品は閉じた Shadow DOM に入れ、ページの CSS の影響を受けないようにする。
  */
-(function (MAGIC) {
+(function (OPT) {
   'use strict';
+  var MAGIC = OPT.magic;
+  var TEXT = {
+    ja: { title: 'Shoji: 隠す部分を選ぶ', click: '隠したい部分をクリックしてください（Esc で終了）', ph: 'クリックするとここにセレクタが入ります',
+      up: '広げる', upTip: 'ひとつ外側の要素を選ぶ', down: '狭める', downTip: 'ひとつ内側に戻す', pick: '選び直す',
+      cancel: 'キャンセル', save: 'このサイトで隠す', badSel: 'セレクタが正しくありません', count: '{n} 個の要素',
+      chosen: 'この範囲を隠します。広すぎる・狭すぎるときは「広げる」「狭める」かセレクタを直接編集できます。',
+      none: '一致する要素がありません。セレクタを確認してください。', failed: '保存できませんでした: ',
+      saved: '保存しました（{rule}）。ダッシュボードの「ユーザールール」で取り消せます。', exists: '同じルールが既にあります。',
+      offline: 'Shoji に接続できませんでした。' },
+    en: { title: 'Shoji: choose what to hide', click: 'Click the part you want to hide (Esc to quit)', ph: 'The selector appears here after you click',
+      up: 'Wider', upTip: 'Select the enclosing element', down: 'Narrower', downTip: 'Go back one level in', pick: 'Pick again',
+      cancel: 'Cancel', save: 'Hide on this site', badSel: 'Invalid selector', count: '{n} element(s)',
+      chosen: 'This area will be hidden. Use Wider / Narrower or edit the selector if it is too big or too small.',
+      none: 'Nothing matches. Check the selector.', failed: 'Could not save: ',
+      saved: 'Saved ({rule}). You can undo it under "User rules" in the dashboard.', exists: 'That rule already exists.',
+      offline: 'Could not reach Shoji.' }
+  };
+  var T = TEXT[OPT.lang] || TEXT.en;
+  function tr(k, v) { return T[k].replace(/\{(\w+)\}/g, function (m, x) { return v && v[x] !== undefined ? v[x] : m; }); }
   if (window !== window.top || window.__shojiPicker) return;
   window.__shojiPicker = true;
 
@@ -85,25 +104,25 @@
     adopt(root, sheet(CSS_TEXT));
     box = el('div', { 'class': 'box' }); root.appendChild(box);
     panel = el('div', { 'class': 'panel' });
-    panel.appendChild(el('p', { 'class': 't' }, 'Shoji: 隠す部分を選ぶ'));
-    panel.appendChild(el('p', { 'class': 'm', 'data-k': 'msg' }, '隠したい部分をクリックしてください（Esc で終了）'));
-    panel.appendChild(el('input', { 'class': 'sel', 'data-k': 'sel', spellcheck: 'false', placeholder: 'クリックするとここにセレクタが入ります' }));
+    panel.appendChild(el('p', { 'class': 't' }, T.title));
+    panel.appendChild(el('p', { 'class': 'm', 'data-k': 'msg' }, T.click));
+    panel.appendChild(el('input', { 'class': 'sel', 'data-k': 'sel', spellcheck: 'false', placeholder: T.ph }));
     var row = el('div', { 'class': 'row' });
-    row.appendChild(el('button', { 'class': 'btn', 'data-k': 'up', title: 'ひとつ外側の要素を選ぶ' }, '広げる'));
-    row.appendChild(el('button', { 'class': 'btn', 'data-k': 'down', title: 'ひとつ内側に戻す' }, '狭める'));
-    row.appendChild(el('button', { 'class': 'btn', 'data-k': 'pick', title: '選び直す' }, '選び直す'));
+    row.appendChild(el('button', { 'class': 'btn', 'data-k': 'up', title: T.upTip }, T.up));
+    row.appendChild(el('button', { 'class': 'btn', 'data-k': 'down', title: T.downTip }, T.down));
+    row.appendChild(el('button', { 'class': 'btn', 'data-k': 'pick', title: T.pick }, T.pick));
     row.appendChild(el('span', { 'class': 'n', 'data-k': 'n' }));
     panel.appendChild(row);
     var row2 = el('div', { 'class': 'row' });
     row2.appendChild(el('span', { 'class': 'sp' }));
-    row2.appendChild(el('button', { 'class': 'btn', 'data-k': 'cancel' }, 'キャンセル'));
-    row2.appendChild(el('button', { 'class': 'btn pri', 'data-k': 'save' }, 'このサイトで隠す'));
+    row2.appendChild(el('button', { 'class': 'btn', 'data-k': 'cancel' }, T.cancel));
+    row2.appendChild(el('button', { 'class': 'btn pri', 'data-k': 'save' }, T.save));
     panel.appendChild(row2);
     root.appendChild(panel);
     (document.documentElement || document.body).appendChild(host);
     q('up').onclick = function () { if (chosen && chosen.parentElement && chosen.parentElement !== document.body) { history.push(chosen); choose(chosen.parentElement); } };
     q('down').onclick = function () { if (history.length) choose(history.pop()); };
-    q('pick').onclick = function () { chosen = null; history = []; setPreview(''); q('sel').value = ''; q('n').textContent = ''; msg('隠したい部分をクリックしてください（Esc で終了）'); picking = true; };
+    q('pick').onclick = function () { chosen = null; history = []; setPreview(''); q('sel').value = ''; q('n').textContent = ''; msg(T.click); picking = true; };
     q('cancel').onclick = stop;
     q('save').onclick = save;
     q('sel').oninput = function () { setPreview(q('sel').value.trim()); updateCount(); };
@@ -112,7 +131,7 @@
   function msg(t) { q('msg').textContent = t; }
   function updateCount() {
     var n = count(q('sel').value.trim());
-    q('n').textContent = n < 0 ? 'セレクタが正しくありません' : (n ? n + ' 個の要素' : '');
+    q('n').textContent = n < 0 ? T.badSel : (n ? tr('count', { n: n }) : '');
   }
   function place(el) {
     if (!el) { box.style.display = 'none'; return; }
@@ -143,7 +162,7 @@
     chosen = el; place(el);
     var sel = selectorFor(el);
     q('sel').value = sel; setPreview(sel); updateCount();
-    msg('この範囲を隠します。広すぎる・狭すぎるときは「広げる」「狭める」かセレクタを直接編集できます。');
+    msg(T.chosen);
   }
   function onClick(e) {
     if (!host || isOurs(e.target) || e.composedPath().indexOf(host) >= 0) return;
@@ -180,20 +199,20 @@
   }
   function save() {
     var sel = q('sel').value.trim();
-    if (!sel || count(sel) < 1) { msg('一致する要素がありません。セレクタを確認してください。'); return; }
+    if (!sel || count(sel) < 1) { msg(T.none); return; }
     var rule = SITE + '##' + sel;
     q('save').disabled = true;
     fetch(MAGIC + '/user-rule', { method: 'POST', mode: 'cors', body: JSON.stringify({ rule: rule }), headers: { 'Content-Type': 'text/plain' } })
       .then(function (r) { return r.json(); })
       .then(function (d) {
-        if (!d.ok) { msg('保存できませんでした: ' + (d.error || '')); q('save').disabled = false; return; }
+        if (!d.ok) { msg(T.failed + (d.error || '')); q('save').disabled = false; return; }
         // 保存したルールをすぐにこのページにも適用する
         adopt(document, sheet(sel + '{display:none!important}'));
         setPreview(''); place(null);
-        msg(d.added ? '保存しました（' + rule + '）。ダッシュボードの「ユーザールール」で取り消せます。' : '同じルールが既にあります。');
+        msg(d.added ? tr('saved', { rule: rule }) : T.exists);
         setTimeout(stop, 1800);
       })
-      .catch(function () { msg('Shoji に接続できませんでした。'); q('save').disabled = false; });
+      .catch(function () { msg(T.offline); q('save').disabled = false; });
   }
 
   // Alt+Shift+H で起動 / 終了

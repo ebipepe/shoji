@@ -47,6 +47,7 @@ Everything happens on your machine. Nothing is sent to any Shoji server, because
 | **Annoyances** | Optional AdGuard lists that hide cookie notices, in-page pop-ups, chat widgets, app banners and social buttons (off by default). |
 | **Element picker** | Press `Alt`+`Shift`+`H` on any page, click the thing you want gone, and Shoji saves a "hide this on this site" rule. |
 | **Filtering log** | A live list of recent requests and what Shoji did with each (blocked, passed, modified, not decrypted, page fixes), with the matching rule and one-click **Allow / Block** that writes a user rule. Kept in memory only. |
+| **Japanese / English** | The whole interface is available in both languages and follows the Windows display language by default. |
 | **Statistics** | Ads, trackers, pop-ups and video ads blocked; estimated data and time saved; top domains; hourly/daily charts; CSV export. |
 
 ## How it works

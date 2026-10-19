@@ -11,7 +11,7 @@ import time
 from flask import Flask, Response, jsonify, request, send_file
 from werkzeug.serving import WSGIRequestHandler, make_server
 
-from . import __version__, lists, stats as stats_mod, winsys
+from . import __version__, i18n, lists, stats as stats_mod, winsys
 from .config import ASSETS_DIR, BUILTIN_HTTPS_EXCLUSIONS, STATS_DB
 from .context import AppContext
 
@@ -69,6 +69,10 @@ def create_app(ctx: AppContext) -> Flask:
         ok = winsys.set_autostart(on)
         return jsonify({"ok": ok, "autostart": winsys.get_autostart()})
 
+    @app.get("/i18n.js")
+    def i18n_js():
+        return send_file(ASSETS_DIR / "i18n.js", mimetype="text/javascript")
+
     @app.get("/icon.svg")
     def icon():
         return send_file(ASSETS_DIR / "icon.svg", mimetype="image/svg+xml")
@@ -90,7 +94,9 @@ def create_app(ctx: AppContext) -> Flask:
             "autostart": winsys.get_autostart(),
             "cert_installed": winsys.ca_cert_installed(),
             "https_ready": ctx.https_ready,
-            "https_problem": ctx.https_problem,
+            "https_problem": i18n.t(ctx.https_problem) if ctx.https_problem in i18n.MESSAGES else ctx.https_problem,
+            "lang": i18n.lang(),
+            "lang_setting": i18n.setting(),
             "cert_path": str(winsys.ca_cert_path()),
             "passthrough_hosts": sorted(ctx.passthrough_hosts),
             "untrusting_apps": sorted(ctx.untrusting_apps),
@@ -121,7 +127,7 @@ def create_app(ctx: AppContext) -> Flask:
         """フィルタリングログから 1 行のルールを追加する"""
         rule = str((request.get_json(force=True) or {}).get("rule", "")).strip()
         if not rule or "\n" in rule or "\r" in rule or len(rule) > 2000:
-            return jsonify({"ok": False, "error": "ルールが正しくありません"}), 400
+            return jsonify({"ok": False, "error": i18n.t("rule.invalid")}), 400
         if not lists.add_user_rule(rule):
             return jsonify({"ok": True, "added": False})
         threading.Thread(target=lists.load_engine, args=(ctx,), daemon=True).start()
@@ -142,8 +148,12 @@ def create_app(ctx: AppContext) -> Flask:
                 "stealth_param", "stealth_cookie", "stealth_header", "request", "dns_query"]
         buf = io.StringIO()
         w = csv.writer(buf)
-        w.writerow(["日付", "広告", "トラッカー", "ポップアップ", "動画広告", "再挿入広告", "要素非表示", "AMP",
-                    "追跡パラメーター", "Cookie遮断", "追跡ヘッダー", "HTTPリクエスト", "DNS問い合わせ"])
+        if i18n.lang() == "ja":
+            w.writerow(["日付", "広告", "トラッカー", "ポップアップ", "動画広告", "再挿入広告", "要素非表示", "AMP",
+                        "追跡パラメーター", "Cookie遮断", "追跡ヘッダー", "HTTPリクエスト", "DNS問い合わせ"])
+        else:
+            w.writerow(["Date", "Ads", "Trackers", "Pop-ups", "Video ads", "Re-inserted ads", "Hidden elements", "AMP",
+                        "Tracking parameters", "Cookies blocked", "Tracking headers", "HTTP requests", "DNS queries"])
         for day in sorted(rep["daily"]):
             w.writerow([day] + [rep["daily"][day].get(c, 0) for c in cats])
         return Response("﻿" + buf.getvalue(), mimetype="text/csv",
@@ -163,10 +173,16 @@ def create_app(ctx: AppContext) -> Flask:
     def set_config():
         patch = request.get_json(force=True) or {}
         allowed = {"features", "stealth", "whitelist", "https_exclusions", "filter_lists",
-                   "update_interval_hours", "dns", "proxy"}
+                   "update_interval_hours", "dns", "proxy", "app"}
         patch = {k: v for k, v in patch.items() if k in allowed}
         reload_lists = "filter_lists" in patch
         ctx.config.update(patch)
+        if "app" in patch:
+            for cb in list(ctx.on_ui_change):
+                try:
+                    cb()
+                except Exception:  # noqa: BLE001
+                    pass
         if reload_lists:
             def _reload():
                 # 新しく有効にしたリストがまだ無ければダウンロードしてから読み込む

@@ -10,6 +10,19 @@
   window.__shojiGuard = true;
 
   var MAGIC = CFG.magic;
+  var TEXT = {
+    ja: { title: 'サポート詐欺の可能性があるページです',
+      body: 'このページは「ウイルスに感染した」などの警告を出しながら、ダイアログの連発や全画面表示で画面を固めようとしていました。Shoji がその動きを止めました。',
+      phone: '表示されている電話番号には絶対に電話しないでください。お使いの PC は、このページを閉じれば元どおり使えます。',
+      close: 'このページを閉じる', stay: '警告を消して表示を続ける', footer: 'Shoji — 詐欺ページ対策',
+      report: 'サポート詐欺の疑い（画面を固める動きを停止）' },
+    en: { title: 'This page looks like a tech-support scam',
+      body: 'It showed fake warnings such as "your computer is infected" while trying to lock your screen with endless dialogs and full screen. Shoji has stopped that.',
+      phone: 'Do not call any phone number shown on the page. Your PC is fine — just close this page.',
+      close: 'Close this page', stay: 'Dismiss and keep viewing', footer: 'Shoji — scam page protection',
+      report: 'Suspected tech-support scam (screen locking stopped)' }
+  };
+  var T = TEXT[CFG.lang] || TEXT.en;
   var isTop = window === window.top;
   var tripped = false, shown = false;
   var b = { dialogs: [], fullscreen: 0, keylock: 0, pointerlock: 0, history: [], unload: 0 };
@@ -119,7 +132,7 @@
   }
   function report() {
     try {
-      var body = JSON.stringify({ host: location.hostname, counts: { security: 1, _d: ['security:サポート詐欺の疑い（画面を固める動きを停止）'] } });
+      var body = JSON.stringify({ host: location.hostname, counts: { security: 1, _d: ['security:' + T.report] } });
       if (!navigator.sendBeacon || !navigator.sendBeacon(MAGIC + '/report', body)) fetch(MAGIC + '/report', { method: 'POST', body: body, mode: 'no-cors' });
     } catch (e) {}
   }
@@ -152,14 +165,14 @@
       root.adoptedStyleSheets = [sh];
     } catch (e) {}
     var o = el('div', { 'class': 'o' }), c = el('div', { 'class': 'c' });
-    c.appendChild(el('h1', {}, 'サポート詐欺の可能性があるページです'));
-    c.appendChild(el('p', {}, 'このページは「ウイルスに感染した」などの警告を出しながら、ダイアログの連発や全画面表示で画面を固めようとしていました。Shoji がその動きを止めました。'));
-    c.appendChild(el('p', { 'class': 's' }, '表示されている電話番号には絶対に電話しないでください。お使いの PC は、このページを閉じれば元どおり使えます。'));
+    c.appendChild(el('h1', {}, T.title));
+    c.appendChild(el('p', {}, T.body));
+    c.appendChild(el('p', { 'class': 's' }, T.phone));
     var row = el('div', { 'class': 'b' });
-    var close = el('button', { 'class': 'p' }, 'このページを閉じる');
-    var stay = el('button', {}, '警告を消して表示を続ける');
+    var close = el('button', { 'class': 'p' }, T.close);
+    var stay = el('button', {}, T.stay);
     row.appendChild(close); row.appendChild(stay); c.appendChild(row);
-    c.appendChild(el('p', { 'class': 'f' }, 'Shoji — 詐欺ページ対策'));
+    c.appendChild(el('p', { 'class': 'f' }, T.footer));
     o.appendChild(c); root.appendChild(o);
     close.onclick = function () {
       try { window.close(); } catch (e) {}

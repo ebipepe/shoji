@@ -25,6 +25,7 @@ from mitmproxy.net.http.headers import infer_content_encoding
 from . import injector, lists, reqlog, scriptlets, winsys, youtube
 from .config import BUILTIN_HTTPS_EXCLUSIONS, CERT_DIR, is_whitelisted
 from .context import AppContext
+from .i18n import lang, t
 from .injector import MAGIC_HOST, MAGIC_ORIGIN
 from .privacy import (CLIENT_HINT_HEADERS, amp_canonical, amp_redirect_url, generic_user_agent,
                       is_search_engine, is_third_party, limit_cookie_age, origin_of,
@@ -72,9 +73,9 @@ def guess_type(req: http.Request) -> str:
     if req.headers.get("upgrade", "").lower() == "websocket":
         return "websocket"
     path = req.path
-    for rx, t in _EXT_MAP:
+    for rx, rtype in _EXT_MAP:
         if rx.search(path.split("#")[0]):
-            return t
+            return rtype
     if "text/html" in req.headers.get("accept", "") and req.method == "GET":
         return "document"
     return "other"
@@ -122,18 +123,18 @@ class ShojiAddon:
     def _passthrough_reason(self, host: str) -> str:
         cfg = self.ctx.cfg
         if self.ctx.paused:
-            return "一時停止中"
+            return t("pt.paused")
         if not cfg["features"].get("https_filtering", True):
-            return "HTTPS フィルタリングがオフ"
+            return t("pt.off")
         if not self.ctx.https_ready:
-            return "証明書を確認できるまで HTTPS は復号しない"
+            return t("pt.nocert")
         if host in self.ctx.passthrough_hosts:
-            return "証明書を受け付けなかったため自動で除外"
+            return t("pt.auto")
         if is_whitelisted(host, BUILTIN_HTTPS_EXCLUSIONS):
-            return "銀行・決済などの内蔵の除外リスト"
+            return t("pt.builtin")
         if is_whitelisted(host, cfg.get("https_exclusions", [])):
-            return "HTTPS を復号しないホスト（利用者の設定）"
-        return "許可リスト"
+            return t("pt.user")
+        return t("pt.allow")
 
     def _page_flags(self, page_url: str, page_host: str) -> set[str]:
         if self._flag_ver != self.ctx.rules_version:
@@ -170,7 +171,7 @@ class ShojiAddon:
             self.ctx.stats.record(cat, "proxy", host, "other", detail="CONNECT " + host)
             self.ctx.reqlog.add(reqlog.BLOCKED, f"https://{host}/", host, method="CONNECT", cat=cat,
                                 rule=self.engine.dns_rule_text(host),
-                                detail="HTTPS を復号しないサイトのため、ドメイン単位でブロック")
+                                detail=t("log.connect"))
             flow.response = http.Response.make(403, b"", {"X-Shoji": "blocked"})
 
     async def tls_clienthello(self, data: tls.ClientHelloData) -> None:
@@ -193,7 +194,7 @@ class ShojiAddon:
             if proc and proc in self.ctx.untrusting_apps:
                 data.ignore_connection = True
                 self.ctx.reqlog.add(reqlog.PASSTHROUGH, f"https://{sni}/", sni, method="TLS",
-                                    detail=f"{proc} は証明書を受け付けないアプリのため復号しない")
+                                    detail=t("log.untrusting", app=proc))
                 return
             self._client_proc[data.context.client.id] = proc
             if len(self._client_proc) > 5000:
@@ -256,12 +257,12 @@ class ShojiAddon:
 
         if self.ctx.paused or self.ctx.is_allowed(host, page_host):
             meta["allowed"] = True
-            _log(reqlog.ALLOWED, detail="一時停止中" if self.ctx.paused else "許可リスト・一時許可")
+            _log(reqlog.ALLOWED, detail=t("log.paused") if self.ctx.paused else t("log.allowlist"))
             return
         if page_host and "document" in self._page_flags(
                 req.headers.get("referer") or f"https://{page_host}/", page_host):
             meta["allowed"] = True
-            _log(reqlog.ALLOWED, detail="このサイトはフィルタの例外ルール（$document）で除外")
+            _log(reqlog.ALLOWED, detail=t("log.docexc"))
             return
 
         # AMP → 通常ページ
@@ -269,7 +270,7 @@ class ShojiAddon:
             target = amp_redirect_url(url)
             if target:
                 stats.record("amp", "proxy", host, count_bytes=False, detail=url)
-                _log(reqlog.MODIFIED, detail="AMP → 通常ページ: " + target)
+                _log(reqlog.MODIFIED, detail=t("log.amp", url=target))
                 self._respond(flow, 302, b"", "text/plain", {"Location": target})
                 return
 
@@ -280,7 +281,7 @@ class ShojiAddon:
             if removed:
                 stats.record("stealth_param", "proxy", host, count=len(removed), count_bytes=False,
                              detail=",".join(removed))
-                meta["notes"].append("追跡パラメーター除去: " + ", ".join(removed))
+                meta["notes"].append(t("log.params", params=", ".join(removed)))
                 if rtype == "document":
                     _log(reqlog.MODIFIED, detail=meta["notes"][-1])
                     self._respond(flow, 302, b"", "text/plain", {"Location": new_url})
@@ -362,7 +363,7 @@ class ShojiAddon:
             flow.metadata["kk"]["strip_set_cookie"] = True
             if "cookie" in h:
                 del h["cookie"]
-                flow.metadata["kk"]["notes"].append("トラッカーへの Cookie 送信を遮断")
+                flow.metadata["kk"]["notes"].append(t("log.cookie"))
                 self.ctx.stats.record("stealth_cookie", "proxy", host, count_bytes=False,
                                       detail="Cookie 送信を遮断")
         if changed:
@@ -373,7 +374,7 @@ class ShojiAddon:
         e = meta.get("log") if meta else None
         if e is not None and flow.error:
             e["status"] = -1
-            e["detail"] = ((e["detail"] + " / ") if e["detail"] else "") + "接続エラー: " + str(flow.error.msg)[:120]
+            e["detail"] = ((e["detail"] + " / ") if e["detail"] else "") + t("log.conn_error") + ": " + str(flow.error.msg)[:120]
 
     # ------------------------------------------------------------ レスポンス
     def responseheaders(self, flow: http.HTTPFlow) -> None:
@@ -430,7 +431,7 @@ class ShojiAddon:
                                  detail=flow.request.path)
                     self.ctx.reqlog.add(reqlog.MODIFIED, flow.request.pretty_url, host, rtype="xmlhttprequest",
                                         page=meta.get("page_host", ""), cat="ad",
-                                        detail=f"YouTube の広告データを除去（{n} 件）")
+                                        detail=t("log.youtube", n=n))
             return
 
         if "text/html" not in ct or resp.status_code != 200 or not resp.content:
@@ -459,7 +460,7 @@ class ShojiAddon:
                 stats.record("ad", "proxy", host, "media", count=1, detail="YouTube 動画広告 (ページ)")
                 stats.record("youtube", "proxy", host, "media", count=n, count_bytes=False, detail=url[:200])
                 self.ctx.reqlog.add(reqlog.MODIFIED, url, host, rtype="document", page=host, cat="ad",
-                                    detail=f"YouTube の広告データを除去（{n} 件）")
+                                    detail=t("log.youtube", n=n))
 
         flags = self._page_flags(url, host)
         if "document" not in flags and F["https_filtering"]:
@@ -476,6 +477,7 @@ class ShojiAddon:
                 "exc": exceptions,
                 "gen": use_generic,
                 "v": self.ctx.rules_version,
+                "lang": lang(),
             }
             calls = (self.engine.scriptlets_for(host)
                      if F.get("scriptlets", True) and "elemhide" not in flags else [])
@@ -486,14 +488,15 @@ class ShojiAddon:
             modified = True
             parts = []
             if specific:
-                parts.append(f"サイト別の要素非表示 {len(specific)} 件")
+                parts.append(t("log.page.specific", n=len(specific)))
             if generic_inline:
-                parts.append(f"汎用の要素非表示 {len(generic_inline)} 件")
+                parts.append(t("log.page.generic", n=len(generic_inline)))
             if calls:
                 names = list(dict.fromkeys(n for n, _ in calls))
-                parts.append(f"スクリプトレット {len(calls)} 件（{', '.join(names[:6])}{' …' if len(names) > 6 else ''}）")
+                parts.append(t("log.page.scriptlets", n=len(calls),
+                               names=", ".join(names[:6]) + (" …" if len(names) > 6 else "")))
             self.ctx.reqlog.add(reqlog.PAGE, url, host, rtype=meta["rtype"], page=host,
-                                detail=" / ".join(parts) or "ページ用スクリプトを埋め込み")
+                                detail=" / ".join(parts) or t("log.page.default"))
             for name in ("content-security-policy", "content-security-policy-report-only"):
                 vals = resp.headers.get_all(name)
                 if vals:
@@ -554,27 +557,27 @@ class ShojiAddon:
         try:
             rule = str(json.loads(req.get_text(strict=False) or "{}").get("rule", "")).strip()
         except ValueError:
-            return False, {"ok": False, "error": "不正なデータ"}
+            return False, {"ok": False, "error": t("picker.bad")}
         origin_host = _host_of(req.headers.get("origin", "")) or _host_of(req.headers.get("referer", ""))
         m = re.match(r"^([a-z0-9.-]+)##(.+)$", rule)
         if not m or not origin_host:
-            return False, {"ok": False, "error": "ルールの形式が正しくありません"}
+            return False, {"ok": False, "error": t("picker.format")}
         domain, sel = m.group(1), m.group(2)
         if "." not in domain or not (origin_host == domain or origin_host.endswith("." + domain)):
-            return False, {"ok": False, "error": "このサイト以外のルールは追加できません"}
+            return False, {"ok": False, "error": t("picker.site")}
         if (len(sel) > 500 or sel.startswith(("+js", "^")) or any(c in sel for c in "{}\n\r")
                 or "</" in sel or _PROCEDURAL_MARK.search(sel)):
-            return False, {"ok": False, "error": "このセレクタは使えません"}
+            return False, {"ok": False, "error": t("picker.selector")}
         now = time.time()
         self._picker_times[:] = [t for t in self._picker_times if now - t < 60][-30:]
         if len(self._picker_times) >= 30:
-            return False, {"ok": False, "error": "短時間に追加しすぎです"}
+            return False, {"ok": False, "error": t("picker.rate")}
         self._picker_times.append(now)
-        added = lists.add_user_rule(rule, comment=f"要素の選択ブロックで追加 ({time.strftime('%Y-%m-%d %H:%M')})")
+        added = lists.add_user_rule(rule, comment=t("picker.comment", time=time.strftime('%Y-%m-%d %H:%M')))
         if added:
             threading.Thread(target=lists.load_engine, args=(self.ctx,), daemon=True).start()
             self.ctx.reqlog.add(reqlog.MODIFIED, f"https://{origin_host}/", origin_host, page=origin_host,
-                                rule=rule, detail="要素の選択ブロックでルールを追加")
+                                rule=rule, detail=t("log.picker"))
         return True, {"ok": True, "added": added, "rule": rule}
 
     def _page_report(self, req: http.Request) -> None:

@@ -22,7 +22,7 @@ import time
 import traceback
 import webbrowser
 
-from shoji import __version__, lists, winsys
+from shoji import __version__, i18n, lists, winsys
 from shoji.config import CERT_DIR, DATA_DIR, LOG_PATH, Config
 from shoji.context import AppContext
 from shoji.filters import FilterEngine
@@ -127,7 +127,7 @@ def ensure_cert(ctx: AppContext):
         ctx.set_https_ready(True)
         print("[cert] " + msg)
     else:
-        ctx.set_https_ready(False, "証明書が未インストールのため HTTPS フィルタリング停止中")
+        ctx.set_https_ready(False, "https.nocert")
         print("[cert] " + msg)
         print("[cert] HTTPS フィルタリングは停止中です（広告ドメインのブロック・DNS フィルタは動作します）。"
               "ダッシュボードの「セットアップ」から証明書をインストールできます。")
@@ -202,6 +202,7 @@ def main():
         return
 
     config = Config()
+    i18n.configure(config.get)
     stats = Stats()
     ctx = AppContext(config, stats, FilterEngine())
 

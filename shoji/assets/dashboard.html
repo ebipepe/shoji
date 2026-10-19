@@ -100,68 +100,70 @@ code{font-family:ui-monospace,Consolas,monospace;font-size:12.5px;background:var
 <header>
   <h1><img src="/icon.svg" alt="" width="22" height="22" style="vertical-align:-4px;margin-right:8px">Shoji<span id="ver"></span></h1>
   <div class="pills" id="pills"></div>
-  <button class="btn" id="pause-btn" style="padding:4px 12px;font-size:12.5px">一時停止</button>
+  <select id="lang-select" aria-label="Language" style="padding:3px 8px;font-size:12.5px">
+    <option value="auto" data-i="lang.auto"></option><option value="ja">日本語</option><option value="en">English</option>
+  </select>
+  <button class="btn" id="pause-btn" style="padding:4px 12px;font-size:12.5px" data-i="pause"></button>
 </header>
 <nav id="tabs">
-  <button data-tab="stats" class="active">統計レポート</button>
-  <button data-tab="log">フィルタリングログ</button>
-  <button data-tab="settings">機能設定</button>
-  <button data-tab="stealth">ステルスモード</button>
-  <button data-tab="allow">許可リスト</button>
-  <button data-tab="filters">フィルタ</button>
-  <button data-tab="setup">セットアップ</button>
+  <button data-tab="stats" class="active" data-i="tab.stats"></button>
+  <button data-tab="log" data-i="tab.log"></button>
+  <button data-tab="settings" data-i="tab.settings"></button>
+  <button data-tab="stealth" data-i="tab.stealth"></button>
+  <button data-tab="allow" data-i="tab.allow"></button>
+  <button data-tab="filters" data-i="tab.filters"></button>
+  <button data-tab="setup" data-i="tab.setup"></button>
 </nav>
 <main>
 <!-- ================= 統計 ================= -->
 <section id="stats" class="active">
   <div class="row">
     <div class="seg" id="period">
-      <button data-d="1" class="active">今日</button><button data-d="7">7日間</button><button data-d="30">30日間</button><button data-d="0">全期間</button>
+      <button data-d="1" class="active" data-i="period.1"></button><button data-d="7" data-i="period.7"></button><button data-d="30" data-i="period.30"></button><button data-d="0" data-i="period.0"></button>
     </div>
     <span class="muted small" id="updated"></span>
     <span style="flex:1"></span>
-    <a class="btn" id="csv" href="/api/report.csv?days=30">CSV 出力</a>
-    <button class="btn" id="reset">統計をリセット</button>
+    <a class="btn" id="csv" href="/api/report.csv?days=30" data-i="csv"></a>
+    <button class="btn" id="reset" data-i="stats.reset"></button>
   </div>
   <div class="grid kpis" id="kpis"></div>
   <div class="grid two" style="margin-top:12px">
     <div class="card">
-      <h2 id="chart-title">ブロック数の推移</h2>
-      <div class="legend"><span><i style="background:var(--series-1)"></i>広告</span><span><i style="background:var(--series-2)"></i>トラッカー</span></div>
+      <h2 id="chart-title" data-i="chart.title"></h2>
+      <div class="legend"><span><i style="background:var(--series-1)"></i><span data-i="cat.ad"></span></span><span><i style="background:var(--series-2)"></i><span data-i="cat.tracker"></span></span></div>
       <div class="chart-wrap" id="chart"></div>
     </div>
     <div class="card">
-      <h2>機能別の内訳</h2>
+      <h2 data-i="breakdown"></h2>
       <table id="breakdown"></table>
     </div>
   </div>
   <div class="grid two" style="margin-top:12px">
-    <div class="card"><h2>ブロックした広告ドメイン</h2><table id="top-ad"></table></div>
-    <div class="card"><h2>ブロックしたトラッカードメイン</h2><table id="top-tracker"></table></div>
+    <div class="card"><h2 data-i="top.ad"></h2><table id="top-ad"></table></div>
+    <div class="card"><h2 data-i="top.tracker"></h2><table id="top-tracker"></table></div>
   </div>
   <div class="card" style="margin-top:12px">
-    <h2>最近のブロック</h2>
+    <h2 data-i="recent"></h2>
     <table class="log" id="recent"></table>
   </div>
-  <p class="muted small">※ 通信量・短縮時間は、ブロックしたリソースの種類ごとの平均サイズから算出した推定値です。</p>
+  <p class="muted small" data-i="stats.note"></p>
 </section>
 
 <!-- ================= フィルタリングログ ================= -->
 <section id="log">
   <div class="row">
     <div class="seg" id="log-filter">
-      <button data-a="" class="active">すべて</button><button data-a="blocked">ブロック</button><button data-a="passed">通過</button><button data-a="modified">変更</button><button data-a="page">ページ処理</button><button data-a="passthrough">復号なし</button><button data-a="allowed">許可</button>
+      <button data-a="" class="active" data-i="log.all"></button><button data-a="blocked" data-i="res.blocked"></button><button data-a="passed" data-i="res.passed"></button><button data-a="modified" data-i="res.modified"></button><button data-a="page" data-i="res.page"></button><button data-a="passthrough" data-i="res.passthrough"></button><button data-a="allowed" data-i="res.allowed"></button>
     </div>
-    <input type="text" id="log-q" placeholder="URL・ドメイン・ルールで絞り込み" style="flex:1;min-width:200px">
-    <button class="btn" id="log-pause">記録を一時停止</button>
-    <button class="btn" id="log-clear">クリア</button>
+    <input type="text" id="log-q" data-i-ph="log.search" style="flex:1;min-width:200px">
+    <button class="btn" id="log-pause" data-i="log.pause"></button>
+    <button class="btn" id="log-clear" data-i="clear"></button>
   </div>
-  <p class="muted small" id="log-note">直近 3,000 件の通信と、Shoji がそれぞれをどう扱ったかを表示します。記録はこの PC のメモリ上にだけあり、保存も送信もしません（Shoji を終了すると消えます）。
-    「許可」「ブロック」を押すと、ユーザールールに 1 行追加されます。</p>
+  <p class="muted small" id="log-note" data-i="log.note"></p>
   <div class="card" style="padding:0;overflow:auto">
     <table class="log" id="log-table">
-      <colgroup><col style="width:74px"><col style="width:100px"><col style="width:84px"><col><col style="width:30%"><col style="width:84px"></colgroup>
-      <thead><tr><th>時刻</th><th>結果</th><th>種類</th><th>URL（ページ）</th><th>ルール・詳細</th><th></th></tr></thead>
+      <colgroup><col style="width:74px"><col style="width:104px"><col style="width:90px"><col><col style="width:30%"><col style="width:84px"></colgroup>
+      <thead><tr><th data-i="col.time"></th><th data-i="log.col.result"></th><th data-i="col.kind"></th><th data-i="log.col.url"></th><th data-i="log.col.rule"></th><th></th></tr></thead>
       <tbody></tbody>
     </table>
   </div>
@@ -174,13 +176,13 @@ code{font-family:ui-monospace,Consolas,monospace;font-size:12.5px;background:var
 
 <!-- ================= ステルス ================= -->
 <section id="stealth">
-  <p class="muted">アクセス解析・広告配信システムがあなたを追跡するために使う情報（検索クエリ、追跡パラメーター、Cookie、ブラウザ・OS情報、画面情報など）を送らないようにします。</p>
+  <p class="muted" data-i="stealth.intro"></p>
   <div class="toggle-list" id="stealth-toggles"></div>
   <div class="card" style="margin-top:12px">
-    <label>1stパーティ Cookie の最大寿命（時間, 0=制限なし）
+    <label><span data-i="cookie.label"></span>
       <input type="text" id="cookie-hours" style="width:90px;margin-left:8px">
     </label>
-    <button class="btn" id="cookie-save" style="margin-left:6px">保存</button>
+    <button class="btn" id="cookie-save" style="margin-left:6px" data-i="save"></button>
   </div>
 </section>
 
@@ -188,21 +190,19 @@ code{font-family:ui-monospace,Consolas,monospace;font-size:12.5px;background:var
 <section id="allow">
   <div class="grid two">
     <div class="card">
-      <h2>許可リスト（フィルタしないサイト）</h2>
-      <p class="muted small">表示が崩れるサイトや、広告を表示して応援したいサイトを追加します。</p>
-      <div class="row"><input type="text" id="wl-input" placeholder="example.com" style="flex:1"><button class="btn pri" id="wl-add">追加</button></div>
+      <h2 data-i="allow.title"></h2>
+      <p class="muted small" data-i="allow.desc"></p>
+      <div class="row"><input type="text" id="wl-input" placeholder="example.com" style="flex:1"><button class="btn pri" id="wl-add" data-i="add"></button></div>
       <div class="chips" id="wl"></div>
     </div>
     <div class="card">
-      <h2>HTTPS を復号しないホスト</h2>
-      <p class="muted small">銀行・決済・証明書ピンニングを使うアプリ等。ドメイン単位のブロックは引き続き有効です。
-        国内外の主な銀行・証券・決済・パスワード管理サービス（<span id="bx-count">約 100</span> 件）は、ここに追加しなくても常に対象外です。
-        <a href="#" id="bx-toggle">一覧を表示</a></p>
+      <h2 data-i="ex.title"></h2>
+      <p class="muted small"><span id="ex-desc"></span> <a href="#" id="bx-toggle" data-i="ex.show"></a></p>
       <div class="chips muted small" id="bx" style="display:none"></div>
-      <div class="row"><input type="text" id="ex-input" placeholder="bank.example.jp" style="flex:1"><button class="btn pri" id="ex-add">追加</button></div>
+      <div class="row"><input type="text" id="ex-input" placeholder="bank.example.com" style="flex:1"><button class="btn pri" id="ex-add" data-i="add"></button></div>
       <div class="chips" id="ex"></div>
-      <h3>自動で除外されたホスト <button class="btn" id="pt-clear" style="font-size:12px;padding:3px 10px">クリア</button></h3>
-      <p class="muted small">証明書を受け付けなかったため自動的に HTTPS 復号の対象外にしたアプリ・ホストです（他のブラウザでのフィルタリングには影響しません）。</p>
+      <h3><span data-i="pt.title"></span> <button class="btn" id="pt-clear" style="font-size:12px;padding:3px 10px" data-i="clear"></button></h3>
+      <p class="muted small" data-i="pt.desc"></p>
       <div class="chips" id="pt"></div>
     </div>
   </div>
@@ -211,27 +211,25 @@ code{font-family:ui-monospace,Consolas,monospace;font-size:12.5px;background:var
 <!-- ================= フィルタ ================= -->
 <section id="filters">
   <div class="card">
-    <div class="row"><h2 style="margin:0">フィルタリスト</h2><span style="flex:1"></span><span class="muted small" id="rule-summary"></span><button class="btn pri" id="update-lists">今すぐ更新</button></div>
+    <div class="row"><h2 style="margin:0" data-i="lists.title"></h2><span style="flex:1"></span><span class="muted small" id="rule-summary"></span><button class="btn pri" id="update-lists" data-i="lists.update"></button></div>
     <table id="lists"></table>
-    <p class="muted small" style="margin:8px 0 0">「迷惑要素」のリストは、広告ではないものの邪魔になる要素（Cookie の同意バナー、ページ内ポップアップ、チャットなどのウィジェット等）を隠します。
-      サイトによっては表示が崩れることがあるため、最初はオフにしています。崩れたときは「フィルタリングログ」で原因のルールを確認できます。</p>
+    <p class="muted small" style="margin:8px 0 0" data-i="lists.note"></p>
   </div>
   <div class="grid two" style="margin-top:12px">
     <div class="card">
-      <h2>ユーザールール</h2>
-      <p class="muted small">ページ上で <code>Alt</code>+<code>Shift</code>+<code>H</code> を押すと「要素の選択ブロック」が起動し、隠したい部分をクリックするだけでここにルールが追加されます。
-        不要になったルールは、この欄から行を消して保存すれば取り消せます。</p>
+      <h2 data-i="ur.title"></h2>
+      <p class="muted small" data-i-html="ur.desc"></p>
       <textarea id="user-rules" spellcheck="false"></textarea>
-      <div class="row" style="margin-top:8px"><button class="btn pri" id="save-rules">保存して反映</button></div>
+      <div class="row" style="margin-top:8px"><button class="btn pri" id="save-rules" data-i="ur.save"></button></div>
     </div>
     <div class="card">
-      <h2>URL チェック</h2>
-      <p class="muted small">URL がブロックされるか、どのルールに一致したかを確認できます。</p>
+      <h2 data-i="chk.title"></h2>
+      <p class="muted small" data-i="chk.desc"></p>
       <input type="text" id="chk-url" placeholder="https://ads.example.com/banner.js" style="width:100%">
       <div class="row" style="margin-top:8px">
-        <input type="text" id="chk-page" placeholder="表示中のページ URL（任意）" style="flex:1">
+        <input type="text" id="chk-page" data-i-ph="chk.page" style="flex:1">
         <select id="chk-type"><option value="script">script</option><option value="image">image</option><option value="sub_frame">iframe</option><option value="xmlhttprequest">xhr</option><option value="document">document</option><option value="other">other</option></select>
-        <button class="btn" id="chk-go">チェック</button>
+        <button class="btn" id="chk-go" data-i="chk.go"></button>
       </div>
       <pre id="chk-out" class="small" style="white-space:pre-wrap"></pre>
     </div>
@@ -242,49 +240,72 @@ code{font-family:ui-monospace,Consolas,monospace;font-size:12.5px;background:var
 <section id="setup">
   <div class="card">
     <div class="step"><div class="n">1</div><div style="flex:1">
-      <b>HTTPS フィルタリング用の証明書をインストール</b> <span id="st-cert"></span>
-      <p class="muted small">YouTube の動画広告除去・要素非表示・ステルスモードなど、HTTPS サイトの中身を処理するのに必要です。この PC 専用に生成された証明書で、外部には送信されません。</p>
-      <button class="btn pri" id="do-cert">証明書をインストール</button> <a class="btn" href="/cert">証明書をダウンロード</a>
-      <p class="muted small">Firefox は起動時に、Windows の証明書を使う設定を自動で入れます（Firefox の再起動後に有効）。</p>
+      <b data-i="setup.cert"></b> <span id="st-cert"></span>
+      <p class="muted small" data-i="setup.cert.desc"></p>
+      <button class="btn pri" id="do-cert" data-i="setup.cert.install"></button> <a class="btn" href="/cert" data-i="setup.cert.download"></a>
+      <p class="muted small" data-i="setup.cert.ff"></p>
     </div></div>
     <div class="step"><div class="n">2</div><div style="flex:1">
-      <b>Windows のプロキシ設定</b> <span id="st-proxy"></span>
-      <p class="muted small">ブラウザと、システムのプロキシ設定に従うアプリの通信をフィルタします。既定では「自動構成スクリプト」方式なので、Shoji が止まっていても自動で直接接続に戻り、ネットが切れません。終了時には元の設定に戻ります。</p>
-      <button class="btn pri" id="proxy-on">有効にする</button> <button class="btn" id="proxy-off">元に戻す</button>
+      <b data-i="setup.proxy"></b> <span id="st-proxy"></span>
+      <p class="muted small" data-i="setup.proxy.desc"></p>
+      <button class="btn pri" id="proxy-on" data-i="setup.proxy.on"></button> <button class="btn" id="proxy-off" data-i="setup.proxy.off"></button>
     </div></div>
     <div class="step"><div class="n">★</div><div style="flex:1">
-      <b>Windows の起動時に Shoji を開始</b> <span id="st-auto"></span>
-      <p class="muted small">サインインすると自動でタスクトレイに常駐します（現在のユーザーのみ・管理者権限は不要）。</p>
-      <label class="toggle" style="max-width:420px"><span class="switch"><input type="checkbox" id="auto-toggle"><span></span></span><span><div class="t">自動起動</div><div class="d">タスクトレイの障子アイコンのメニューからも切り替えられます</div></span></label>
+      <b data-i="setup.auto"></b> <span id="st-auto"></span>
+      <p class="muted small" data-i="setup.auto.desc"></p>
+      <label class="toggle" style="max-width:420px"><span class="switch"><input type="checkbox" id="auto-toggle"><span></span></span><span><div class="t" data-i="setup.auto.t"></div><div class="d" data-i="setup.auto.d"></div></span></label>
     </div></div>
     <div class="step"><div class="n">3</div><div style="flex:1">
-      <b>DNS フィルタリング（アプリ内広告）</b> <span id="st-dns"></span>
-      <p class="muted small">PC の DNS を本ソフトに向け、プロキシを使わないアプリの広告・トラッカーも名前解決の段階で止めます。管理者権限が必要なので <code>set_dns.bat</code> を右クリック →「管理者として実行」してください。元に戻すときは <code>reset_dns.bat</code>。</p>
-      <button class="btn" id="dns-on">DNS を設定（管理者実行時のみ）</button> <button class="btn" id="dns-off">DNS を元に戻す</button>
+      <b data-i="setup.dns"></b> <span id="st-dns"></span>
+      <p class="muted small" data-i-html="setup.dns.desc"></p>
+      <button class="btn" id="dns-on" data-i="setup.dns.on"></button> <button class="btn" id="dns-off" data-i="setup.dns.off"></button>
     </div></div>
     <div class="step"><div class="n">4</div><div style="flex:1">
-      <b>スマホ・タブレットのアプリ内広告もブロックする（任意）</b>
-      <p class="muted small">設定タブではなく <code>data\config.json</code> の <code>dns.listen_host</code> と <code>proxy.listen_host</code> を <code>0.0.0.0</code> にして再起動し、スマホの Wi-Fi 設定で DNS をこの PC の IP アドレスにします。HTTPS フィルタリングも使う場合は Wi-Fi のプロキシをこの PC の <span id="proxy-port"></span> に設定し、ブラウザで <code>http://shoji.blocker/cert</code> を開いて証明書をインストールします。</p>
+      <b data-i="setup.lan"></b>
+      <p class="muted small" data-i-html="setup.lan.desc"></p>
+    </div></div>
+    <div class="step"><div class="n">🌐</div><div style="flex:1">
+      <b data-i="setup.lang"></b>
+      <p class="muted small" data-i="setup.lang.desc"></p>
+      <select id="lang-select2"><option value="auto" data-i="lang.auto"></option><option value="ja">日本語</option><option value="en">English</option></select>
     </div></div>
   </div>
 </section>
 </main>
 <div id="toast"></div>
 <div id="modal"><div class="card">
-  <h2 id="modal-title">ルールを追加</h2>
+  <h2 id="modal-title"></h2>
   <p class="muted small" id="modal-desc"></p>
   <input type="text" id="modal-rule" spellcheck="false">
   <div class="row" style="margin-top:12px;justify-content:flex-end;margin-bottom:0">
-    <button class="btn" id="modal-cancel">キャンセル</button><button class="btn pri" id="modal-ok">ユーザールールに追加</button>
+    <button class="btn" id="modal-cancel" data-i="modal.cancel"></button><button class="btn pri" id="modal-ok" data-i="modal.ok"></button>
   </div>
 </div></div>
+<script src="/i18n.js"></script>
 <script>
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const fmt = n => (n || 0).toLocaleString('ja-JP');
-let CFG = null, DAYS = 1;
+let CFG = null, DAYS = 1, LANG = 'ja', LOCALE = 'ja-JP';
 
-function toast(msg) { const t = $('#toast'); t.textContent = msg; t.style.display = 'block'; clearTimeout(t._t); t._t = setTimeout(() => t.style.display = 'none', 2600); }
+/* ---------- 言語 ---------- */
+// 文言を取り出す。{name} を差し込む。配列（機能の名前と説明）はそのまま返す
+function t(key, vars) {
+  const d = SHOJI_I18N[LANG] || SHOJI_I18N.ja;
+  let s = d[key] !== undefined ? d[key] : (SHOJI_I18N.ja[key] !== undefined ? SHOJI_I18N.ja[key] : key);
+  if (typeof s === 'string' && vars) s = s.replace(/\{(\w+)\}/g, (m, k) => vars[k] !== undefined ? vars[k] : m);
+  return s;
+}
+function applyLang(lang) {
+  LANG = SHOJI_I18N[lang] ? lang : 'en';
+  LOCALE = LANG === 'ja' ? 'ja-JP' : 'en-US';
+  document.documentElement.lang = LANG;
+  document.querySelectorAll('[data-i]').forEach(el => { el.textContent = t(el.dataset.i); });
+  document.querySelectorAll('[data-i-html]').forEach(el => { el.innerHTML = t(el.dataset.iHtml); });   // 自前の文言だけ
+  document.querySelectorAll('[data-i-ph]').forEach(el => { el.placeholder = t(el.dataset.iPh); });
+}
+const fmt = n => (n || 0).toLocaleString(LOCALE);
+
+function toast(msg) { const el = $('#toast'); el.textContent = msg; el.style.display = 'block'; clearTimeout(el._t); el._t = setTimeout(() => el.style.display = 'none', 2600); }
 async function api(path, body) {
   const r = await fetch(path, body === undefined ? {} : {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)});
   return r.json();
@@ -296,9 +317,9 @@ function bytes(b) {
 }
 function dur(ms) {
   const s = ms / 1000;
-  if (s >= 3600) return (s / 3600).toFixed(1) + ' 時間';
-  if (s >= 60) return (s / 60).toFixed(1) + ' 分';
-  return s.toFixed(1) + ' 秒';
+  if (s >= 3600) return t('unit.h', {n: (s / 3600).toFixed(1)});
+  if (s >= 60) return t('unit.m', {n: (s / 60).toFixed(1)});
+  return t('unit.s', {n: s.toFixed(1)});
 }
 
 /* ---------- タブ ---------- */
@@ -310,11 +331,8 @@ document.querySelectorAll('#tabs button').forEach(b => b.onclick = () => {
 });
 
 /* ---------- フィルタリングログ ---------- */
-const LOG = {items: [], last: 0, action: '', q: '', paused: false, timer: null};
-const RES_LABEL = {blocked: 'ブロック', passed: '通過', modified: '変更', page: 'ページ処理', passthrough: '復号なし', allowed: '許可'};
-const TYPE_LABEL = {document: 'ページ', sub_frame: 'iframe', script: 'スクリプト', stylesheet: 'CSS', image: '画像',
-  media: 'メディア', font: 'フォント', xmlhttprequest: 'XHR/fetch', websocket: 'WebSocket', ping: 'ビーコン', other: 'その他'};
-function hhmmss(t) { const d = new Date(t * 1000); return d.toTimeString().slice(0, 8); }
+const LOG = {items: [], last: 0, action: '', q: '', enabled: true, timer: null};
+function hhmmss(ts) { const d = new Date(ts * 1000); return d.toTimeString().slice(0, 8); }
 function suggestRule(e) {
   if (e.action === 'blocked') {
     if (e.src === 'dns' || !e.page || e.page === e.host) return '@@||' + e.host + '^';
@@ -327,14 +345,14 @@ function suggestRule(e) {
   return '||' + e.host + '^';
 }
 function logRow(e) {
-  const btn = e.action === 'blocked' ? `<button class="btn mini" data-allow="${e.id}">許可</button>`
-    : (e.action === 'passed' || e.action === 'modified') && e.rtype !== 'document' ? `<button class="btn mini" data-block="${e.id}">ブロック</button>` : '';
-  const type = e.src === 'dns' ? 'DNS ' + esc(e.method) : (TYPE_LABEL[e.rtype] || esc(e.method || e.rtype || ''));
+  const btn = e.action === 'blocked' ? `<button class="btn mini" data-allow="${e.id}">${t('log.allow')}</button>`
+    : (e.action === 'passed' || e.action === 'modified') && e.rtype !== 'document' ? `<button class="btn mini" data-block="${e.id}">${t('log.block')}</button>` : '';
+  const type = e.src === 'dns' ? 'DNS ' + esc(e.method) : (e.rtype ? t('type.' + e.rtype) : esc(e.method || ''));
   const page = e.page && e.page !== e.host ? `<div class="sub">${esc(e.page)}</div>` : '';
-  const status = e.status > 0 ? `<span class="sub"> ${e.status}</span>` : (e.status < 0 ? '<span class="sub ng"> エラー</span>' : '');
+  const status = e.status > 0 ? `<span class="sub"> ${e.status}</span>` : (e.status < 0 ? `<span class="sub ng"> ${t('log.error')}</span>` : '');
   const rule = e.rule ? `<div>${esc(e.rule)}</div>` : '';
   const detail = e.detail ? `<div class="sub">${esc(e.detail)}</div>` : '';
-  return `<tr><td class="sub">${hhmmss(e.t)}</td><td><span class="res ${e.action}">${RES_LABEL[e.action] || e.action}</span></td>`
+  return `<tr><td class="sub">${hhmmss(e.t)}</td><td><span class="res ${e.action}">${esc(t('res.' + e.action))}</span></td>`
     + `<td class="sub">${type}${status}</td><td class="u" title="${esc(e.url)}"><div>${esc(e.url)}</div>${page}</td>`
     + `<td class="r">${rule}${detail}</td><td>${btn}</td></tr>`;
 }
@@ -347,8 +365,9 @@ function renderLog() {
     rows.push(logRow(e));
     if (rows.length >= 400) break;
   }
-  $('#log-table tbody').innerHTML = rows.join('') || '<tr><td colspan="6" class="muted">まだ記録がありません。ブラウザでページを開くと表示されます。</td></tr>';
+  $('#log-table tbody').innerHTML = rows.join('') || `<tr><td colspan="6" class="muted">${t('log.empty')}</td></tr>`;
 }
+function setLogButton() { $('#log-pause').textContent = t(LOG.enabled ? 'log.pause' : 'log.resume'); }
 async function pollLog() {
   clearTimeout(LOG.timer);
   if (!$('#log').classList.contains('active')) return;
@@ -358,7 +377,7 @@ async function pollLog() {
     if (r.items.length) { LOG.items = r.items.concat(LOG.items).slice(0, 3000); renderLog(); }
     else if (!LOG.items.length) renderLog();
     LOG.last = r.last;
-    $('#log-pause').textContent = r.enabled ? '記録を一時停止' : '記録を再開';
+    LOG.enabled = r.enabled; setLogButton();
   } catch (e) { /* 再試行 */ }
   LOG.timer = setTimeout(pollLog, 1500);
 }
@@ -369,19 +388,16 @@ document.querySelectorAll('#log-filter button').forEach(b => b.onclick = () => {
 $('#log-q').oninput = e => { LOG.q = e.target.value.trim(); renderLog(); };
 $('#log-clear').onclick = async () => { await api('/api/log/clear', {}); LOG.items = []; renderLog(); };
 $('#log-pause').onclick = async () => {
-  const on = $('#log-pause').textContent !== '記録を一時停止';
-  const r = await api('/api/log/enabled', {on});
-  $('#log-pause').textContent = r.enabled ? '記録を一時停止' : '記録を再開';
+  const r = await api('/api/log/enabled', {on: !LOG.enabled});
+  LOG.enabled = r.enabled; setLogButton();
 };
 $('#log-table').onclick = ev => {
   const b = ev.target.closest('button'); if (!b) return;
   const id = Number(b.dataset.allow || b.dataset.block);
   const e = LOG.items.find(x => x.id === id); if (!e) return;
   const allow = !!b.dataset.allow;
-  $('#modal-title').textContent = allow ? 'この通信を許可する' : 'この通信をブロックする';
-  $('#modal-desc').textContent = allow
-    ? '例外ルールを追加します。$domain= を付けると、そのページの中でだけ許可します。必要なら書き換えてから追加してください。'
-    : 'ブロックするルールを追加します。||ドメイン^ はそのドメインへの通信をすべて止めます。必要なら書き換えてから追加してください。';
+  $('#modal-title').textContent = t(allow ? 'modal.allow.title' : 'modal.block.title');
+  $('#modal-desc').textContent = t(allow ? 'modal.allow.desc' : 'modal.block.desc');
   $('#modal-rule').value = suggestRule(e);
   $('#modal').style.display = 'grid';
   $('#modal-rule').focus();
@@ -392,38 +408,46 @@ $('#modal-ok').onclick = async () => {
   const rule = $('#modal-rule').value.trim(); if (!rule) return;
   const r = await api('/api/user_rules/add', {rule});
   $('#modal').style.display = 'none';
-  toast(r.ok ? (r.added ? 'ユーザールールに追加しました。数秒で反映されます（ページを再読み込みしてください）' : 'すでに同じルールがあります') : (r.error || '追加できませんでした'));
+  toast(r.ok ? t(r.added ? 'rule.added' : 'rule.exists') : (r.error || t('rule.failed')));
 };
 
 /* ---------- 状態 ---------- */
+let PAUSED = false, BUILTIN_EX = 0;
 async function loadStatus() {
   const s = await api('/api/status');
+  if (s.lang && s.lang !== LANG) { applyLang(s.lang); renderConfig(); loadReport(); if (LOG.items.length) renderLog(); }
+  $('#lang-select').value = $('#lang-select2').value = s.lang_setting || 'auto';
   $('#ver').textContent = 'v' + s.version;
   const st = s.status || {};
-  const pill = (on, label) => `<span class="pill ${on ? 'on' : 'off'}">${label}</span>`;
-  $('#pills').innerHTML = pill(st.proxy === 'running', 'プロキシ ' + s.proxy_addr) +
-    pill(s.https_ready, s.https_ready ? 'HTTPS フィルタ' : 'HTTPS フィルタ停止中') +
-    pill(st.dns === 'running', 'DNS ' + s.dns_addr) +
-    pill(s.system_proxy, 'システムプロキシ') + pill(s.cert_installed, '証明書');
-  const mark = ok => ok ? '<span class="ok">✔ 設定済み</span>' : '<span class="ng">未設定</span>';
-  $('#st-cert').innerHTML = mark(s.cert_installed) + (s.https_ready ? '' : ` <span class="ng">— ${esc(s.https_problem || 'HTTPS フィルタリング停止中')}</span>`);
-  $('#st-proxy').innerHTML = mark(s.system_proxy) + (s.system_proxy ? ` <span class="muted small">（${s.proxy_mode === 'pac' ? '自動構成スクリプト' : '固定設定'}）</span>` : '');
+  const pill = (on, label) => `<span class="pill ${on ? 'on' : 'off'}">${esc(label)}</span>`;
+  $('#pills').innerHTML = pill(st.proxy === 'running', t('pill.proxy', {addr: s.proxy_addr})) +
+    pill(s.https_ready, t(s.https_ready ? 'pill.https' : 'pill.https.off')) +
+    pill(st.dns === 'running', t('pill.dns', {addr: s.dns_addr})) +
+    pill(s.system_proxy, t('pill.sysproxy')) + pill(s.cert_installed, t('pill.cert'));
+  const mark = ok => ok ? `<span class="ok">${t('st.done')}</span>` : `<span class="ng">${t('st.notyet')}</span>`;
+  $('#st-cert').innerHTML = mark(s.cert_installed) + (s.https_ready ? '' : ` <span class="ng">— ${esc(s.https_problem || t('st.https.off'))}</span>`);
+  $('#st-proxy').innerHTML = mark(s.system_proxy) + (s.system_proxy ? ` <span class="muted small">(${t(s.proxy_mode === 'pac' ? 'st.pac' : 'st.static')})</span>` : '');
   $('#auto-toggle').checked = !!s.autostart;
-  $('#st-auto').innerHTML = s.autostart ? '<span class="ok">✔ 有効</span>' : '<span class="muted">無効</span>';
-  $('#pause-btn').textContent = s.paused ? '▶ 再開' : '一時停止';
+  $('#st-auto').innerHTML = s.autostart ? `<span class="ok">${t('st.on')}</span>` : `<span class="muted">${t('st.off')}</span>`;
+  $('#pause-btn').textContent = t(s.paused ? 'resume' : 'pause');
   $('#pause-btn').classList.toggle('pri', !!s.paused);
   PAUSED = !!s.paused;
-  $('#st-dns').innerHTML = st.dns === 'running' ? '<span class="ok">DNS サーバー稼働中</span>' : '<span class="ng">DNS サーバー停止中（' + esc(st.dns) + '）</span>';
-  $('#proxy-port').textContent = s.proxy_addr.split(':').pop() + ' 番ポート';
+  $('#st-dns').innerHTML = st.dns === 'running' ? `<span class="ok">${t('st.dns.on')}</span>` : `<span class="ng">${esc(t(st.dns === 'error' ? 'st.dns.error' : 'st.dns.off'))}</span>`;
+  const pp = $('#proxy-port'); if (pp) pp.textContent = t('port', {n: s.proxy_addr.split(':').pop()});
   if (s.builtin_exclusions) {
-    $('#bx-count').textContent = s.builtin_exclusions.length;
+    BUILTIN_EX = s.builtin_exclusions.length;
     $('#bx').innerHTML = s.builtin_exclusions.map(h => `<span class="chip">${esc(h)}</span>`).join('');
   }
-  const pts = (s.untrusting_apps || []).map(a => `<span class="chip">アプリ: ${esc(a)}</span>`).concat(s.passthrough_hosts.map(h => `<span class="chip">${esc(h)}</span>`));
-  $('#pt').innerHTML = pts.length ? pts.join('') : '<span class="muted small">なし</span>';
+  $('#ex-desc').textContent = t('ex.desc', {n: BUILTIN_EX || '100+'});
+  const pts = (s.untrusting_apps || []).map(a => `<span class="chip">${esc(t('app.prefix', {name: a}))}</span>`).concat(s.passthrough_hosts.map(h => `<span class="chip">${esc(h)}</span>`));
+  $('#pt').innerHTML = pts.length ? pts.join('') : `<span class="muted small">${t('none')}</span>`;
   if (st.lists && st.lists.network_rules !== undefined) $('#rule-summary').textContent =
-    `DNS ${fmt(st.lists.dns_domains)} ドメイン / URL ${fmt(st.lists.network_rules)} / 要素非表示 ${fmt(st.lists.cosmetic_generic + st.lists.cosmetic_specific)} ルール` + (st.updating ? '（更新中…）' : '');
+    t('rules.summary', {dns: fmt(st.lists.dns_domains), net: fmt(st.lists.network_rules), cos: fmt(st.lists.cosmetic_generic + st.lists.cosmetic_specific)}) + (st.updating ? t('rules.updating') : '');
 }
+$('#lang-select').onchange = $('#lang-select2').onchange = async e => {
+  await api('/api/config', {app: {language: e.target.value}});
+  await loadStatus();
+};
 
 /* ---------- 統計 ---------- */
 document.querySelectorAll('#period button').forEach(b => b.onclick = () => {
@@ -432,46 +456,46 @@ document.querySelectorAll('#period button').forEach(b => b.onclick = () => {
   $('#csv').href = '/api/report.csv?days=' + DAYS;
   loadReport();
 });
-$('#reset').onclick = async () => { if (confirm('統計をすべて削除しますか？')) { await api('/api/stats/reset', {}); loadReport(); } };
+$('#reset').onclick = async () => { if (confirm(t('stats.reset.confirm'))) { await api('/api/stats/reset', {}); loadReport(); } };
 
-const CAT_LABEL = {ad: '広告', tracker: 'トラッカー', security: '危険サイト・詐欺', annoyance: '迷惑要素', popup: 'ポップアップ', youtube: '動画広告', reinserted: '再挿入広告', cosmetic: '要素非表示', amp: 'AMP 無効化', stealth_param: '追跡パラメーター除去', stealth_cookie: 'Cookie 遮断', stealth_header: '追跡ヘッダー除去'};
+const CATS = ['ad', 'tracker', 'security', 'annoyance', 'popup', 'youtube', 'reinserted', 'cosmetic', 'amp', 'stealth_param', 'stealth_cookie', 'stealth_header'];
+const catLabel = c => CATS.includes(c) ? t('cat.' + c) : c;
 
 async function loadReport() {
   const r = await api('/api/report?days=' + DAYS);
   const T = k => (r.totals[k] || {}).count || 0;
   const src = (k, s) => ((r.by_source[k] || {})[s] || 0);
-  const kpi = (label, value, sub, color, tip) => `<div class="card kpi"${tip ? ` title="${tip}"` : ''}><div class="label">${color ? `<span class="dot" style="background:${color}"></span>` : ''}${label}</div><div class="value">${value}</div><div class="sub">${sub || '&nbsp;'}</div></div>`;
+  const kpi = (label, value, sub, color, tip) => `<div class="card kpi"${tip ? ` title="${esc(tip)}"` : ''}><div class="label">${color ? `<span class="dot" style="background:${color}"></span>` : ''}${esc(label)}</div><div class="value">${value}</div><div class="sub">${sub ? esc(sub) : '&nbsp;'}</div></div>`;
   $('#kpis').innerHTML =
-    kpi('ブロックした広告', fmt(T('ad')), `ブラウザ ${fmt(src('ad','proxy'))} / DNS ${fmt(src('ad','dns'))}`, 'var(--series-1)') +
-    kpi('ブロックしたトラッカー', fmt(T('tracker')), `ブラウザ ${fmt(src('tracker','proxy'))} / DNS ${fmt(src('tracker','dns'))}`, 'var(--series-2)') +
-    kpi('節約した通信量', bytes(r.saved_bytes), '推定値') +
-    kpi('短縮した読み込み時間', dur(r.saved_ms), '推定値') +
-    kpi('動画広告', fmt(T('youtube')), 'YouTube 等') +
-    kpi('ポップアップ', fmt(T('popup')), '新しいウィンドウ・オーバーレイ') +
-    kpi('通信に占める広告・トラッカー', (r.block_ratio * 100).toFixed(1) + '%',
-        `全 ${fmt(T('request') + T('dns_query'))} 件の通信のうち ${fmt(T('ad') + T('tracker'))} 件をブロック`, '',
-        'この PC のブラウザ・アプリが行った通信のうち、広告・トラッカーへの通信としてブロックした割合です。広告をどれだけ止められたか（取りこぼし）を表す数字ではありません。');
+    kpi(t('kpi.ad'), fmt(T('ad')), t('kpi.via', {p: fmt(src('ad', 'proxy')), d: fmt(src('ad', 'dns'))}), 'var(--series-1)') +
+    kpi(t('kpi.tracker'), fmt(T('tracker')), t('kpi.via', {p: fmt(src('tracker', 'proxy')), d: fmt(src('tracker', 'dns'))}), 'var(--series-2)') +
+    kpi(t('kpi.bytes'), bytes(r.saved_bytes), t('kpi.estimate')) +
+    kpi(t('kpi.time'), dur(r.saved_ms), t('kpi.estimate')) +
+    kpi(t('kpi.video'), fmt(T('youtube')), t('kpi.video.sub')) +
+    kpi(t('kpi.popup'), fmt(T('popup')), t('kpi.popup.sub')) +
+    kpi(t('kpi.share'), (r.block_ratio * 100).toFixed(1) + '%',
+        t('kpi.share.sub', {all: fmt(T('request') + T('dns_query')), n: fmt(T('ad') + T('tracker'))}), '', t('kpi.share.tip'));
   // 内訳
-  $('#breakdown').innerHTML = '<tr><th>機能</th><th class="num">件数</th></tr>' +
-    Object.keys(CAT_LABEL).map(k => `<tr><td>${CAT_LABEL[k]}</td><td class="num">${fmt(T(k))}</td></tr>`).join('');
+  $('#breakdown').innerHTML = `<tr><th>${t('breakdown.feature')}</th><th class="num">${t('breakdown.count')}</th></tr>` +
+    CATS.map(k => `<tr><td>${esc(catLabel(k))}</td><td class="num">${fmt(T(k))}</td></tr>`).join('');
   // 上位ドメイン
   const topTable = (rows, cls) => {
-    if (!rows.length) return '<tr><td class="muted">まだデータがありません</td></tr>';
+    if (!rows.length) return `<tr><td class="muted">${t('nodata')}</td></tr>`;
     const max = rows[0].count;
     return rows.map(x => `<tr><td style="width:46%">${esc(x.domain)}</td><td><div class="bar ${cls}" style="width:${Math.max(3, x.count / max * 100)}%"></div></td><td class="num" style="width:70px">${fmt(x.count)}</td></tr>`).join('');
   };
   $('#top-ad').innerHTML = topTable(r.top.ad || [], '');
   $('#top-tracker').innerHTML = topTable(r.top.tracker || [], 't');
   // 最近
-  $('#recent').innerHTML = '<tr><th>時刻</th><th>種類</th><th>経路</th><th>ドメイン</th><th>詳細</th></tr>' + (r.recent.map(x =>
-    `<tr><td>${new Date(x.ts * 1000).toLocaleTimeString('ja-JP')}</td><td><span class="tag">${CAT_LABEL[x.category] || x.category}</span></td><td>${{proxy: 'ブラウザ', dns: 'DNS', page: 'ページ'}[x.source] || x.source}</td><td>${esc(x.domain)}</td><td class="d" title="${esc(x.detail)}">${esc(x.detail)}</td></tr>`).join('') || '<tr><td class="muted" colspan="5">まだデータがありません</td></tr>');
+  $('#recent').innerHTML = `<tr><th>${t('col.time')}</th><th>${t('col.kind')}</th><th>${t('col.route')}</th><th>${t('col.domain')}</th><th>${t('col.detail')}</th></tr>` + (r.recent.map(x =>
+    `<tr><td>${new Date(x.ts * 1000).toLocaleTimeString(LOCALE)}</td><td><span class="tag">${esc(catLabel(x.category))}</span></td><td>${esc(['proxy', 'dns', 'page'].includes(x.source) ? t('route.' + x.source) : x.source)}</td><td>${esc(x.domain)}</td><td class="d" title="${esc(x.detail)}">${esc(x.detail)}</td></tr>`).join('') || `<tr><td class="muted" colspan="5">${t('nodata')}</td></tr>`);
   // グラフ
   let points;
   if (DAYS === 1) {
-    $('#chart-title').textContent = '今日の時間別ブロック数';
-    points = Array.from({length: 24}, (_, h) => { const k = String(h).padStart(2, '0'); const v = r.hourly[k] || {}; return {label: h + '時', ad: v.ad || 0, tracker: v.tracker || 0}; });
+    $('#chart-title').textContent = t('chart.today');
+    points = Array.from({length: 24}, (_, h) => { const k = String(h).padStart(2, '0'); const v = r.hourly[k] || {}; return {label: t('chart.hour', {h}), ad: v.ad || 0, tracker: v.tracker || 0}; });
   } else {
-    $('#chart-title').textContent = '日別ブロック数';
+    $('#chart-title').textContent = t('chart.daily');
     const days = DAYS || Math.max(7, Object.keys(r.daily).length);
     points = [];
     for (let i = days - 1; i >= 0; i--) {
@@ -482,17 +506,17 @@ async function loadReport() {
     }
   }
   drawChart(points);
-  $('#updated').textContent = new Date().toLocaleTimeString('ja-JP') + ' 更新';
+  $('#updated').textContent = t('updated', {time: new Date().toLocaleTimeString(LOCALE)});
 }
 
 function drawChart(points) {
   const el = $('#chart');
   const W = el.clientWidth || 520, H = 220, L = 44, B = 24, T = 8, R = 6;
-  const max = Math.max(1, ...points.map(p => p.ad + p.tracker));
+  const max = Math.max(4, ...points.map(p => p.ad + p.tracker));   // 小さい値でも目盛りが整数になるように
   const nice = (() => { const p = Math.pow(10, Math.floor(Math.log10(max))); return Math.ceil(max / p) * p; })();
   const n = points.length, slot = (W - L - R) / n, bw = Math.max(2, Math.min(28, slot * 0.62));
   const y = v => T + (H - T - B) * (1 - v / nice);
-  let s = `<svg width="${W}" height="${H}" role="img" aria-label="ブロック数のグラフ">`;
+  let s = `<svg width="${W}" height="${H}" role="img" aria-label="${esc(t('chart.aria'))}">`;
   for (let i = 0; i <= 4; i++) {
     const v = nice * i / 4, yy = y(v);
     s += `<line x1="${L}" x2="${W - R}" y1="${yy}" y2="${yy}" stroke="var(--grid)"/><text x="${L - 6}" y="${yy + 4}" text-anchor="end">${fmt(Math.round(v))}</text>`;
@@ -505,16 +529,16 @@ function drawChart(points) {
     // 下: 広告, 上: トラッカー（区切りに 2px の隙間）
     if (p.ad) s += `<rect x="${x}" y="${ya}" width="${bw}" height="${y(0) - ya}" fill="var(--series-1)" rx="${p.tracker ? 0 : r}"/>`;
     if (p.tracker) s += `<rect x="${x}" y="${yt}" width="${bw}" height="${Math.max(0, ya - yt - (p.ad ? 2 : 0))}" fill="var(--series-2)" rx="${r}"/>`;
-    s += `<rect x="${L + slot * i}" y="${T}" width="${slot}" height="${H - T - B}" fill="transparent" data-i="${i}"/>`;
+    s += `<rect x="${L + slot * i}" y="${T}" width="${slot}" height="${H - T - B}" fill="transparent" data-p="${i}"/>`;
     if (i % every === 0) s += `<text x="${L + slot * i + slot / 2}" y="${H - 6}" text-anchor="middle">${p.label}</text>`;
   });
   s += '</svg><div class="tip"></div>';
   el.innerHTML = s;
   const tip = el.querySelector('.tip');
-  el.querySelectorAll('rect[data-i]').forEach(rc => {
+  el.querySelectorAll('rect[data-p]').forEach(rc => {
     rc.onmousemove = e => {
-      const p = points[+rc.dataset.i];
-      tip.innerHTML = `<b>${p.label}</b><br><span style="color:var(--series-1)">■</span> 広告 ${fmt(p.ad)}<br><span style="color:var(--series-2)">■</span> トラッカー ${fmt(p.tracker)}`;
+      const p = points[+rc.dataset.p];
+      tip.innerHTML = `<b>${p.label}</b><br><span style="color:var(--series-1)">■</span> ${t('cat.ad')} ${fmt(p.ad)}<br><span style="color:var(--series-2)">■</span> ${t('cat.tracker')} ${fmt(p.tracker)}`;
       tip.style.display = 'block';
       const bx = el.getBoundingClientRect();
       let left = e.clientX - bx.left + 12; if (left > W - 150) left -= 170;
@@ -525,53 +549,28 @@ function drawChart(points) {
 }
 
 /* ---------- 設定 ---------- */
-const FEATURES = [
-  ['block_ads', 'ブラウザ広告をブロック', 'バナー・テキスト広告などの配信元への通信を止めます。'],
-  ['youtube_ads', '動画広告をブロック', 'YouTube の再生前・途中の広告、フィード内の広告を除去します。'],
-  ['block_trackers', 'トラッカーをブロック', 'アクセス解析・行動追跡スクリプトやビーコンを止めます。'],
-  ['block_malware', '危険なサイト・詐欺ページ対策', 'マルウェア配布・フィッシング・不正な採掘のサイトを警告画面で止め、「ウイルスに感染」などと表示して画面を固めるサポート詐欺のページを無力化します。'],
-  ['dns_filtering', 'DNS フィルタリング', 'アプリ内広告を含め、広告ドメインの名前解決を止めます。'],
-  ['cname_uncloaking', 'CNAME 偽装トラッカーの検出', 'サイトのサブドメインに見せかけたトラッカーを DNS 応答から見破ります。'],
-  ['https_filtering', 'HTTPS フィルタリング', '暗号化された通信の中身を PC 内で処理し、細かいフィルタを適用します。'],
-  ['cosmetic', '広告枠の非表示', '広告の入っていた要素をページから隠します。'],
-  ['scriptlets', 'ページ内スクリプトの調整', 'フィルタリストの指示に従い、広告ブロック検出や広告表示用のスクリプトの動きを止めます（uBlock Origin 形式の +js ルール）。'],
-  ['collapse_space', '広告削除後のスペース調整', '広告が消えた後に残る空白や「広告」ラベルだけの枠を畳みます。'],
-  ['anti_reinsertion', '再挿入された広告をブロック', '一度消した広告がスクリプトで再表示される場合も除去します。'],
-  ['block_popups', 'ポップアップを非表示', '勝手に開く新しいウィンドウ・ポップアンダー・クリックを横取りする透明な広告を止めます。'],
-  ['disable_amp', 'AMP を無効化', 'Google の AMP ページを元のサイトの通常ページで開きます。'],
-  ['hide_affiliate_banners', 'アフィリエイトのバナーを隠す', 'サイトが自前で貼った Amazon・楽天等の宣伝バナー画像も隠します（文字リンクや記事中の商品紹介は残します）。'],
-];
-const STEALTH = [
-  ['enabled', 'ステルスモード', '以下のプライバシー保護機能をまとめて有効にします。'],
-  ['strip_tracking_params', '追跡パラメーターを除去', 'URL に付く utm_*・fbclid・gclid などを取り除きます。'],
-  ['hide_search_queries', '検索クエリを隠す', '検索結果から移動した先のサイトに、検索した語句を渡しません。'],
-  ['trim_referer', 'リファラーを最小化', '他サイトに送る「どのページから来たか」をドメインだけにします。'],
-  ['block_third_party_cookies', 'トラッカーの Cookie を遮断', '広告・解析ドメインとの Cookie のやり取りを止めます。'],
-  ['send_dnt', 'Do Not Track / GPC を送信', '追跡拒否の意思表示ヘッダーを送ります。'],
-  ['strip_client_hints', 'OS・端末の詳細情報を隠す', 'OS バージョン・機種名・正確なブラウザバージョン (Client Hints) を送りません。'],
-  ['remove_x_client_data', 'X-Client-Data を除去', 'Chrome が Google に送る識別用ヘッダーを取り除きます。'],
-  ['hide_user_agent', 'User-Agent を汎用化', 'ブラウザ・OS の識別文字列を一般的な値にします（一部サイトで表示が変わる可能性）。'],
-  ['block_webrtc_leak', 'WebRTC の IP 漏えい防止', 'ローカル IP アドレスがページに知られるのを防ぎます。'],
-  ['fingerprint_protection', '画面・ハードウェア解析の防止', '画面解像度・CPU数・Canvas 等によるブラウザの識別（フィンガープリント）を妨害します。'],
-];
-function toggles(container, defs, section) {
-  $(container).innerHTML = defs.map(([k, t, d]) => `<label class="toggle"><span class="switch"><input type="checkbox" data-k="${k}" ${CFG[section][k] ? 'checked' : ''}><span></span></span><span><div class="t">${t}</div><div class="d">${d}</div></span></label>`).join('');
+const FEATURES = ['block_ads', 'youtube_ads', 'block_trackers', 'block_malware', 'dns_filtering', 'cname_uncloaking', 'https_filtering',
+  'cosmetic', 'scriptlets', 'collapse_space', 'anti_reinsertion', 'block_popups', 'disable_amp', 'hide_affiliate_banners'];
+const STEALTH = ['enabled', 'strip_tracking_params', 'hide_search_queries', 'trim_referer', 'block_third_party_cookies', 'send_dnt',
+  'strip_client_hints', 'remove_x_client_data', 'hide_user_agent', 'block_webrtc_leak', 'fingerprint_protection'];
+function toggles(container, keys, prefix, section) {
+  $(container).innerHTML = keys.map(k => { const [name, desc] = t(prefix + k); return `<label class="toggle"><span class="switch"><input type="checkbox" data-k="${k}" ${CFG[section][k] ? 'checked' : ''}><span></span></span><span><div class="t">${esc(name)}</div><div class="d">${esc(desc)}</div></span></label>`; }).join('');
   $(container).querySelectorAll('input').forEach(i => i.onchange = async () => {
     const patch = {}; patch[section] = {}; patch[section][i.dataset.k] = i.checked;
-    const r = await api('/api/config', patch); CFG = r.config; toast('保存しました（すぐに反映されます）');
+    const r = await api('/api/config', patch); CFG = r.config; toast(t('toast.saved'));
   });
 }
 function chips(container, list, key) {
-  $(container).innerHTML = list.length ? list.map((h, i) => `<span class="chip">${esc(h)}<button data-i="${i}" title="削除">×</button></span>`).join('') : '<span class="muted small">なし</span>';
+  $(container).innerHTML = list.length ? list.map((h, i) => `<span class="chip">${esc(h)}<button data-n="${i}" title="${esc(t('remove'))}">×</button></span>`).join('') : `<span class="muted small">${t('none')}</span>`;
   $(container).querySelectorAll('button').forEach(b => b.onclick = async () => {
-    const next = CFG[key].filter((_, i) => i !== +b.dataset.i);
+    const next = CFG[key].filter((_, i) => i !== +b.dataset.n);
     const r = await api('/api/config', {[key]: next}); CFG = r.config; renderConfig();
   });
 }
 function addTo(inputSel, key) {
   const v = $(inputSel).value.trim().replace(/^https?:\/\//, '').replace(/\/.*$/, '').toLowerCase();
   if (!v) return;
-  if (!CFG[key].includes(v)) api('/api/config', {[key]: CFG[key].concat([v])}).then(r => { CFG = r.config; renderConfig(); toast(v + ' を追加しました'); });
+  if (!CFG[key].includes(v)) api('/api/config', {[key]: CFG[key].concat([v])}).then(r => { CFG = r.config; renderConfig(); toast(t('toast.added', {v})); });
   $(inputSel).value = '';
 }
 $('#wl-add').onclick = () => addTo('#wl-input', 'whitelist');
@@ -579,11 +578,12 @@ $('#bx-toggle').onclick = e => { e.preventDefault(); const b = $('#bx'); b.style
 $('#ex-add').onclick = () => addTo('#ex-input', 'https_exclusions');
 $('#wl-input').onkeydown = e => e.key === 'Enter' && addTo('#wl-input', 'whitelist');
 $('#ex-input').onkeydown = e => e.key === 'Enter' && addTo('#ex-input', 'https_exclusions');
-$('#cookie-save').onclick = async () => { const r = await api('/api/config', {stealth: {first_party_cookie_max_age_hours: +$('#cookie-hours').value || 0}}); CFG = r.config; toast('保存しました'); };
+$('#cookie-save').onclick = async () => { const r = await api('/api/config', {stealth: {first_party_cookie_max_age_hours: +$('#cookie-hours').value || 0}}); CFG = r.config; toast(t('toast.saved2')); };
 
 function renderConfig() {
-  toggles('#feature-toggles', FEATURES, 'features');
-  toggles('#stealth-toggles', STEALTH, 'stealth');
+  if (!CFG) return;
+  toggles('#feature-toggles', FEATURES, 'f.', 'features');
+  toggles('#stealth-toggles', STEALTH, 's.', 'stealth');
   chips('#wl', CFG.whitelist, 'whitelist');
   chips('#ex', CFG.https_exclusions, 'https_exclusions');
   $('#cookie-hours').value = CFG.stealth.first_party_cookie_max_age_hours || 0;
@@ -593,37 +593,40 @@ async function loadConfig() { CFG = await api('/api/config'); renderConfig(); }
 /* ---------- フィルタ ---------- */
 async function loadFilters() {
   const r = await api('/api/lists');
-  $('#lists').innerHTML = '<tr><th>有効</th><th>名前</th><th>分類</th><th>最終更新</th><th class="num">サイズ</th></tr>' + r.lists.map((l, i) =>
-    `<tr><td><label class="switch"><input type="checkbox" data-i="${i}" ${l.enabled ? 'checked' : ''}><span></span></label></td><td>${esc(l.name)}${l.desc ? `<div class="muted small">${esc(l.desc)}</div>` : ''}</td><td><span class="tag">${{tracker: 'トラッカー', annoyance: '迷惑要素', security: '危険サイト'}[l.category] || '広告'}</span></td><td>${l.updated ? new Date(l.updated * 1000).toLocaleString('ja-JP') : '<span class="muted">未取得</span>'}</td><td class="num">${l.size ? Math.round(l.size / 1024).toLocaleString() + ' KB' : '-'}</td></tr>`).join('');
+  $('#lists').innerHTML = `<tr><th>${t('lists.col.on')}</th><th>${t('lists.col.name')}</th><th>${t('lists.col.cat')}</th><th>${t('lists.col.updated')}</th><th class="num">${t('lists.col.size')}</th></tr>` + r.lists.map((l, i) => {
+    const desc = LANG === 'ja' ? l.desc : (l.desc_en || l.desc);
+    const cat = ['tracker', 'annoyance', 'security'].includes(l.category) ? l.category : 'ad';
+    return `<tr><td><label class="switch"><input type="checkbox" data-n="${i}" ${l.enabled ? 'checked' : ''}><span></span></label></td><td>${esc(l.name)}${desc ? `<div class="muted small">${esc(desc)}</div>` : ''}</td><td><span class="tag">${t('listcat.' + cat)}</span></td><td>${l.updated ? new Date(l.updated * 1000).toLocaleString(LOCALE) : `<span class="muted">${t('lists.never')}</span>`}</td><td class="num">${l.size ? Math.round(l.size / 1024).toLocaleString(LOCALE) + ' KB' : '-'}</td></tr>`;
+  }).join('');
   $('#lists').querySelectorAll('input').forEach(inp => inp.onchange = async () => {
-    const fl = CFG.filter_lists.map((l, i) => i === +inp.dataset.i ? Object.assign({}, l, {enabled: inp.checked}) : l);
+    const fl = CFG.filter_lists.map((l, i) => i === +inp.dataset.n ? Object.assign({}, l, {enabled: inp.checked}) : l);
     const res = await api('/api/config', {filter_lists: fl}); CFG = res.config;
-    toast(inp.checked ? 'リストを取得して読み込んでいます（数秒〜十数秒）…' : 'ルールを再読み込みしています…');
+    toast(t(inp.checked ? 'lists.loading' : 'lists.reloading'));
     setTimeout(loadFilters, 9000);
   });
   const u = await api('/api/user_rules'); $('#user-rules').value = u.text;
 }
-$('#update-lists').onclick = async () => { await api('/api/lists/update', {}); toast('フィルタリストを更新しています…'); setTimeout(loadFilters, 8000); };
-$('#save-rules').onclick = async () => { await api('/api/user_rules', {text: $('#user-rules').value}); toast('保存しました。ルールを再読み込みしています…'); };
+$('#update-lists').onclick = async () => { await api('/api/lists/update', {}); toast(t('lists.updating')); setTimeout(loadFilters, 8000); };
+$('#save-rules').onclick = async () => { await api('/api/user_rules', {text: $('#user-rules').value}); toast(t('ur.saved')); };
 $('#chk-go').onclick = async () => {
   const q = new URLSearchParams({url: $('#chk-url').value.trim(), page: $('#chk-page').value.trim(), type: $('#chk-type').value});
   const r = await api('/api/check?' + q);
-  $('#chk-out').textContent = r.blocked ? `🛑 ブロックされます（${r.category === 'tracker' ? 'トラッカー' : '広告'}）\nルール: ${r.rule}` : '✅ ブロックされません';
-  if (r.dns) $('#chk-out').textContent += `\nDNS: ドメインごとブロック対象（${r.dns}）`;
+  $('#chk-out').textContent = r.blocked ? t('chk.blocked', {cat: catLabel(r.category), rule: r.rule}) : t('chk.ok');
+  if (r.dns) $('#chk-out').textContent += t('chk.dns', {cat: catLabel(r.dns)});
 };
 
 /* ---------- セットアップ ---------- */
-$('#pt-clear').onclick = async () => { await api('/api/passthrough/clear', {}); toast('クリアしました'); loadStatus(); };
+$('#pt-clear').onclick = async () => { await api('/api/passthrough/clear', {}); toast(t('toast.cleared')); loadStatus(); };
 $('#do-cert').onclick = async () => { const r = await api('/api/system/cert', {}); toast(r.message); loadStatus(); };
-let PAUSED = false;
-$('#pause-btn').onclick = async () => { const r = await api('/api/pause', {paused: !PAUSED}); toast(r.paused ? 'フィルタを一時停止しました（すべての通信をそのまま通します）' : 'フィルタを再開しました'); loadStatus(); };
-$('#auto-toggle').onchange = async e => { const r = await api('/api/autostart', {on: e.target.checked}); toast(r.autostart ? 'Windows の起動時に開始します' : '自動起動をオフにしました'); loadStatus(); };
-$('#proxy-on').onclick = async () => { const r = await api('/api/system/proxy', {on: true}); toast(r.ok ? 'プロキシを設定しました' : 'Windows 以外では手動で設定してください'); loadStatus(); };
-$('#proxy-off').onclick = async () => { await api('/api/system/proxy', {on: false}); toast('元のプロキシ設定に戻しました'); loadStatus(); };
+$('#pause-btn').onclick = async () => { const r = await api('/api/pause', {paused: !PAUSED}); toast(t(r.paused ? 'toast.paused' : 'toast.resumed')); loadStatus(); };
+$('#auto-toggle').onchange = async e => { const r = await api('/api/autostart', {on: e.target.checked}); toast(t(r.autostart ? 'toast.auto.on' : 'toast.auto.off')); loadStatus(); };
+$('#proxy-on').onclick = async () => { const r = await api('/api/system/proxy', {on: true}); toast(t(r.ok ? 'toast.proxy.on' : 'toast.proxy.manual')); loadStatus(); };
+$('#proxy-off').onclick = async () => { await api('/api/system/proxy', {on: false}); toast(t('toast.proxy.off')); loadStatus(); };
 $('#dns-on').onclick = async () => { const r = await api('/api/system/dns', {on: true}); toast(r.message); };
 $('#dns-off').onclick = async () => { const r = await api('/api/system/dns', {on: false}); toast(r.message); };
 
-loadConfig(); loadStatus(); loadReport();
+applyLang((navigator.language || 'en').toLowerCase().startsWith('ja') ? 'ja' : 'en');
+loadStatus().then(() => { loadConfig(); loadReport(); });
 setInterval(() => { loadStatus(); if ($('#stats').classList.contains('active')) loadReport(); }, 5000);
 window.addEventListener('resize', () => loadReport());
 </script>

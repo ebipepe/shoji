@@ -23,6 +23,7 @@ from dnslib import AAAA, QTYPE, RCODE, RR, A, DNSRecord
 
 from .config import is_whitelisted
 from .context import AppContext
+from .i18n import t
 
 
 class Upstream:
@@ -148,7 +149,7 @@ class DnsFilter:
                         or (cat == "security" and F.get("block_malware", True))):
                 stats.record(cat, "dns", name, "dns", detail=f"{QTYPE.get(q.qtype)} from {client}")
                 self.ctx.reqlog.add("blocked", name, name, src="dns", method=str(QTYPE.get(q.qtype)), cat=cat,
-                                    rule=self.ctx.engine.dns_rule_text(name), detail="DNS で名前解決をブロック")
+                                    rule=self.ctx.engine.dns_rule_text(name), detail=t("log.dns"))
                 return self._blocked_reply(req)
 
         key = (name, q.qtype, q.qclass)
@@ -174,7 +175,7 @@ class DnsFilter:
                         stats.record("tracker", "dns", name, "dns", detail=f"CNAME 偽装 → {target}")
                         self.ctx.reqlog.add("blocked", name, name, src="dns", method=str(QTYPE.get(q.qtype)),
                                             cat="tracker", rule=self.ctx.engine.dns_rule_text(target),
-                                            detail=f"CNAME で偽装したトラッカー（実体は {target}）")
+                                            detail=t("log.cname", target=target))
                         return self._blocked_reply(req)
         if rec.header.rcode == RCODE.NOERROR:
             self._cache_put(key, data, rec)

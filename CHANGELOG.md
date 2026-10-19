@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+- English user interface. The dashboard, tray menu, block and warning pages, element picker, scam warning,
+  filtering-log details and filter-list descriptions are available in Japanese and English. The language
+  follows the Windows display language by default and can be changed in the dashboard (top right, or Setup).
+  The log file (`shoji.log`) is still in Japanese.
+
 ### Changed
 - The dashboard's "block rate" tile is now "share of traffic that was ads/trackers", with the blocked count and
   an explanation, so it is not mistaken for how many ads were caught.

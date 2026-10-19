@@ -10,6 +10,7 @@ import re
 
 from .config import ASSETS_DIR
 from .filters import selectors_to_css
+from .i18n import lang, t
 
 MAGIC_HOST = "shoji.blocker"
 MAGIC_ORIGIN = f"https://{MAGIC_HOST}"
@@ -76,7 +77,7 @@ def build_snippet(cfg: dict, specific: list[str], exceptions: list[str], generic
     # スクリプトレットはページのスクリプトより先に動く必要があるため、同じ <script> の先頭に置く
     # 詐欺ページ対策はページのスクリプトより先に alert 等を見張る必要があるため、最初に置く
     js = js_ascii(_GUARD_JS.replace(_PLACEHOLDER, cfg_json) + scriptlet_js + _CONTENT_JS.replace(_PLACEHOLDER, cfg_json)
-                  + _PICKER_JS.replace(_MAGIC_PLACEHOLDER, json.dumps(MAGIC_ORIGIN)))
+                  + _PICKER_JS.replace(_MAGIC_PLACEHOLDER, json.dumps({"magic": MAGIC_ORIGIN, "lang": cfg.get("lang", "ja")})))
     script_hash = _sha256(js)
     parts.append(f"<script>{js}</script>")
     return "".join(parts), script_hash, style_hash
@@ -182,20 +183,20 @@ def blocked_page_html(url: str, host: str, category: str, rule: str) -> str:
     import html as _h
     allow = f"{MAGIC_ORIGIN}/allow?url=" + _url_quote(url)
     danger = category == "security"
+    h = _h.escape(host)
     if danger:
-        title = "危険なサイトをブロックしました"
-        lead = (f"<b>{_h.escape(host)}</b> は、マルウェアの配布・フィッシング詐欺・不正な仮想通貨の採掘などに"
-                "使われているサイトとして、公開されている危険サイトのリストに登録されています。")
-        extra = ("<p class=\"warn\">パスワードやカード番号を入力したり、ファイルをダウンロードしたりしないでください。"
-                 "心当たりのないメールや SMS のリンクから来た場合は、そのまま閉じてください。</p>")
-        allow_label = "危険を理解したうえで開く（1時間）"
+        title = t("danger.title")
+        lead = t("danger.lead", host=h)
+        extra = f'<p class="warn">{_h.escape(t("danger.warn"))}</p>'
+        allow_label = t("danger.allow")
         acc = "#c43c3b"
     else:
-        label = "トラッカー" if category == "tracker" else "広告"
-        title = f"{label}ページをブロックしました"
-        lead = f"<b>{_h.escape(host)}</b> は{label}配信先としてフィルタに登録されています。"
+        tracker = category == "tracker"
+        label = t("block.tracker" if tracker else "block.ad")
+        title = t("block.title.tracker" if tracker else "block.title", label=label)
+        lead = t("block.lead.tracker" if tracker else "block.lead", host=h, label=label)
         extra = ""
-        allow_label = "このまま開く（1時間許可）"
+        allow_label = t("block.allow")
         acc = "#2f6fed"
     # 広告のポップアップ/新しいタブならそのまま閉じる（危険サイトの警告は閉じずに見せる）
     auto_close = "" if danger else f"""<script>
@@ -204,8 +205,8 @@ if (window.opener || (history.length <= 1 && document.referrer)) {{
   setTimeout(function () {{ window.close(); }}, 50);
 }}
 </script>"""
-    return f"""<!doctype html><html lang="ja"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1"><title>{title}</title>
+    return f"""<!doctype html><html lang="{lang()}"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>{_h.escape(title)}</title>
 <style>
 :root{{color-scheme:light dark;--bg:#f6f7f9;--fg:#1d2330;--mut:#667085;--card:#fff;--acc:{acc};--bd:#e3e6ec}}
 @media (prefers-color-scheme:dark){{:root{{--bg:#12151b;--fg:#e8eaee;--mut:#98a2b3;--card:#1b2029;--bd:#2a313d}}}}
@@ -218,13 +219,13 @@ a.btn{{padding:8px 16px;border-radius:8px;text-decoration:none;border:1px solid 
 a.pri{{background:var(--acc);color:#fff;border-color:var(--acc)}}
 a.sub{{font-size:12.5px;color:var(--mut)}}
 </style></head><body><div class="c">
-<h1>{title}</h1>
+<h1>{_h.escape(title)}</h1>
 <p>{lead}</p>
 {extra}
 <p><code>{_h.escape(url[:300])}</code></p>
-<p style="font-size:12px">ルール: <code>{_h.escape(rule[:200])}</code></p>
-<div class="b"><a class="btn pri" href="javascript:history.back()">戻る</a>
-<a class="btn{' sub' if danger else ''}" href="{_h.escape(allow)}">{allow_label}</a></div>
+<p style="font-size:12px">{t("block.rule")}: <code>{_h.escape(rule[:200])}</code></p>
+<div class="b"><a class="btn pri" href="javascript:history.back()">{t("block.back")}</a>
+<a class="btn{' sub' if danger else ''}" href="{_h.escape(allow)}">{_h.escape(allow_label)}</a></div>
 <p style="font-size:12px;margin-top:18px">Shoji</p></div>
 {auto_close}</body></html>"""
 
