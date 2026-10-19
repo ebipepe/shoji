@@ -114,6 +114,7 @@ DEFAULT_CONFIG: dict = {
          "category": "security", "enabled": True, "desc": "フィッシング（偽のログイン画面など）サイト",
          "desc_en": "Phishing sites (fake login pages and similar)"},
         {"name": "NoCoin Filter List", "url": "https://raw.githubusercontent.com/hoshsadiq/adblock-nocoin-list/master/nocoin.txt",
+         "mirrors": ["https://cdn.jsdelivr.net/gh/hoshsadiq/adblock-nocoin-list@master/nocoin.txt"],
          "category": "security", "enabled": True, "desc": "ブラウザで勝手に仮想通貨を採掘するスクリプト",
          "desc_en": "Scripts that mine cryptocurrency in your browser"},
         {"name": "Peter Lowe's list", "url": "https://pgl.yoyo.org/adservers/serverlist.php?hostformat=adblockplus&showintro=0&mimetype=plaintext", "category": "ad", "enabled": True},
@@ -198,7 +199,7 @@ def _with_default_lists(data: dict) -> dict:
     for e in data.get("filter_lists", []):
         d = defaults.get(e.get("url"))
         if d:
-            for k in ("desc", "desc_en", "category"):
+            for k in ("desc", "desc_en", "category", "mirrors"):
                 if k in d:
                     e[k] = d[k]
     return data

@@ -4,7 +4,7 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses
 [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [0.4.0] - 2026-10-20
 
 ### Added
 - English user interface. The dashboard, tray menu, block and warning pages, element picker, scam warning,
@@ -13,6 +13,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   The log file (`shoji.log`) is still in Japanese.
 
 ### Changed
+- Filter lists can have mirror URLs; if the main download fails, the mirrors are tried (NoCoin now falls back to jsDelivr).
 - The dashboard's "block rate" tile is now "share of traffic that was ads/trackers", with the blocked count and
   an explanation, so it is not mistaken for how many ads were caught.
 

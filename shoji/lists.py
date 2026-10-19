@@ -100,20 +100,26 @@ def load_engine(ctx: AppContext) -> dict:
 
 
 def download(entry: dict, timeout: int = 60) -> bool:
+    """リストをダウンロードする。失敗したら予備の配布元（mirrors）を順に試す"""
     p = list_file(entry)
     p.parent.mkdir(parents=True, exist_ok=True)
-    req = urllib.request.Request(entry["url"], headers={"User-Agent": "Shoji/" + __version__})
-    try:
-        # 自分自身（システムプロキシ）を経由しないよう直接接続する
-        opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
-        with opener.open(req, timeout=timeout) as r:
-            data = r.read()
-    except Exception as e:  # noqa: BLE001
-        print(f"[lists] {entry['name']} のダウンロードに失敗: {e}")
+    # 自分自身（システムプロキシ）を経由しないよう直接接続する
+    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+    data, errors = None, []
+    for url in [entry["url"]] + list(entry.get("mirrors") or []):
+        req = urllib.request.Request(url, headers={"User-Agent": "Shoji/" + __version__})
+        try:
+            with opener.open(req, timeout=timeout) as r:
+                data = r.read()
+            if len(data) >= 100:
+                break
+            data = None
+        except Exception as e:  # noqa: BLE001
+            errors.append(f"{url.split('/')[2]}: {e}")
+    if data is None:
+        print(f"[lists] {entry['name']} のダウンロードに失敗: " + " / ".join(errors))
         return False
     text = data.decode("utf-8", errors="replace")
-    if len(text) < 100:
-        return False
     tmp = p.with_suffix(".tmp")
     tmp.write_text(text, encoding="utf-8")
     tmp.replace(p)
