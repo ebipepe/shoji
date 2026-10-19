@@ -4,6 +4,17 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+- Element picker: press `Alt`+`Shift`+`H` on a page, click what you want gone, adjust with
+  "wider / narrower" or edit the selector, and save it as a site-specific hiding rule. The rule applies
+  immediately. The picker's save endpoint only accepts element-hiding rules for the page's own site.
+
+### Changed
+- Pages are always fetched fresh (no 304 revalidation) while HTTPS filtering is on, so new rules apply on
+  reload instead of a cached copy with the old ones.
+
 ## [0.3.0] - 2026-10-19
 
 ### Added

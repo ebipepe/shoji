@@ -179,6 +179,36 @@ def test_annoyance_lists():
     assert e.specific_selectors("example.com") == [".cookie-bar"]
 
 
+def test_picker_rule_validation():
+    import tempfile
+    from pathlib import Path
+    from unittest import mock
+    from mitmproxy import http
+    from shoji import lists
+    from shoji.config import Config
+    from shoji.context import AppContext
+    from shoji.filters import FilterEngine
+    from shoji.proxy_addon import ShojiAddon
+    with tempfile.TemporaryDirectory() as d:
+        ctx = AppContext(Config(Path(d) / "c.json"), mock.MagicMock(), FilterEngine())
+        addon = ShojiAddon(ctx)
+        addon._picker_times = []
+
+        def send(rule, origin="https://www.example.com"):
+            req = http.Request.make("POST", "https://shoji.blocker/user-rule", '{"rule": "%s"}' % rule,
+                                    {"Origin": origin, "Content-Type": "text/plain"})
+            return addon._picker_rule(req)
+        with mock.patch.object(lists, "USER_RULES", Path(d) / "user_rules.txt"), \
+                mock.patch.object(lists, "load_engine"):
+            assert send("example.com##.promo")[0]
+            assert not send("other.com##.promo")[0]                   # 他のサイト
+            assert not send("example.com#@#.ad")[0]                   # 例外ルール
+            assert not send("@@||ads.example^")[0]                    # ネットワーク例外
+            assert not send("example.com##+js(nowoif)")[0]            # スクリプトレット
+            assert not send("example.com##a{color:red}")[0]           # CSS の注入
+            assert "example.com##.promo" in (Path(d) / "user_rules.txt").read_text(encoding="utf-8")
+
+
 if __name__ == "__main__":
     for name, fn in list(globals().items()):
         if name.startswith("test_"):

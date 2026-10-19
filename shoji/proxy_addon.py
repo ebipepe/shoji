@@ -14,13 +14,15 @@ from __future__ import annotations
 import asyncio
 import json
 import re
+import threading
+import time
 from collections import OrderedDict
 from urllib.parse import parse_qs, urlsplit
 
 from mitmproxy import http, tls
 from mitmproxy.net.http.headers import infer_content_encoding
 
-from . import injector, reqlog, scriptlets, winsys, youtube
+from . import injector, lists, reqlog, scriptlets, winsys, youtube
 from .config import BUILTIN_HTTPS_EXCLUSIONS, CERT_DIR, is_whitelisted
 from .context import AppContext
 from .injector import MAGIC_HOST, MAGIC_ORIGIN
@@ -74,6 +76,10 @@ def _host_of(url: str) -> str:
         return (urlsplit(url).hostname or "").lower()
     except ValueError:
         return ""
+
+
+# 要素の選択ブロックで受け付けない、ブラウザの CSS ではない拡張構文
+_PROCEDURAL_MARK = re.compile(r":(?:-abp-|has-text|xpath|upward|remove\(|style\(|matches-|min-text|watch-attr|others)", re.I)
 
 
 class ShojiAddon:
@@ -285,6 +291,11 @@ class ShojiAddon:
 
         if S["enabled"]:
             self._stealth_request(flow, host, page_host, rtype, S)
+        if rtype == "document" and F["https_filtering"]:
+            # キャッシュの再検証（304）だと、前回埋め込んだ古いルールのままのページが使われるため、毎回取り直す
+            for name in ("if-none-match", "if-modified-since"):
+                if name in req.headers:
+                    del req.headers[name]
         _log(reqlog.MODIFIED if meta["notes"] else reqlog.PASSED, detail=" / ".join(meta["notes"]))
 
     def _block(self, flow, rule, cat, rtype, host, url):
@@ -502,6 +513,10 @@ class ShojiAddon:
         elif path == "/report" and req.method == "POST":
             self._page_report(req)
             flow.response = http.Response.make(204, b"", cors)
+        elif path == "/user-rule" and req.method == "POST":
+            ok, payload = self._picker_rule(req)
+            flow.response = http.Response.make(200 if ok else 400, json.dumps(payload, ensure_ascii=False).encode("utf-8"),
+                                               {"Content-Type": "application/json", "Cache-Control": "no-store", **cors})
         elif path == "/allow":
             target = parse_qs(urlsplit(req.pretty_url).query).get("url", [""])[0]
             h = _host_of(target)
@@ -521,6 +536,38 @@ class ShojiAddon:
         else:
             flow.response = http.Response.make(200, "Shoji は動作中です".encode("utf-8"),
                                                {"Content-Type": "text/plain; charset=utf-8"})
+
+    _picker_times: list = []
+
+    def _picker_rule(self, req: http.Request) -> tuple[bool, dict]:
+        """要素の選択ブロックから送られた「このサイトで隠す」ルールを保存する。
+        どのページからでも呼べる窓口なので、受け付けるのは送信元サイト自身の要素を隠すルールだけにする
+        （他サイトへの影響や、ブロックを無効にする例外ルールは受け付けない）。"""
+        try:
+            rule = str(json.loads(req.get_text(strict=False) or "{}").get("rule", "")).strip()
+        except ValueError:
+            return False, {"ok": False, "error": "不正なデータ"}
+        origin_host = _host_of(req.headers.get("origin", "")) or _host_of(req.headers.get("referer", ""))
+        m = re.match(r"^([a-z0-9.-]+)##(.+)$", rule)
+        if not m or not origin_host:
+            return False, {"ok": False, "error": "ルールの形式が正しくありません"}
+        domain, sel = m.group(1), m.group(2)
+        if "." not in domain or not (origin_host == domain or origin_host.endswith("." + domain)):
+            return False, {"ok": False, "error": "このサイト以外のルールは追加できません"}
+        if (len(sel) > 500 or sel.startswith(("+js", "^")) or any(c in sel for c in "{}\n\r")
+                or "</" in sel or _PROCEDURAL_MARK.search(sel)):
+            return False, {"ok": False, "error": "このセレクタは使えません"}
+        now = time.time()
+        self._picker_times[:] = [t for t in self._picker_times if now - t < 60][-30:]
+        if len(self._picker_times) >= 30:
+            return False, {"ok": False, "error": "短時間に追加しすぎです"}
+        self._picker_times.append(now)
+        added = lists.add_user_rule(rule, comment=f"要素の選択ブロックで追加 ({time.strftime('%Y-%m-%d %H:%M')})")
+        if added:
+            threading.Thread(target=lists.load_engine, args=(self.ctx,), daemon=True).start()
+            self.ctx.reqlog.add(reqlog.MODIFIED, f"https://{origin_host}/", origin_host, page=origin_host,
+                                rule=rule, detail="要素の選択ブロックでルールを追加")
+        return True, {"ok": True, "added": added, "rule": rule}
 
     def _page_report(self, req: http.Request) -> None:
         try:

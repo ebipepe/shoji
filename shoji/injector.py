@@ -40,7 +40,9 @@ def _utf16(c: str):
 
 
 _CONTENT_JS = _strip_comments((ASSETS_DIR / "content.js").read_text(encoding="utf-8"))
+_PICKER_JS = _strip_comments((ASSETS_DIR / "picker.js").read_text(encoding="utf-8"))
 _PLACEHOLDER = "window.__SHOJI_CFG__"
+_MAGIC_PLACEHOLDER = "window.__SHOJI_MAGIC__"
 
 _HEAD_RE = re.compile(r"<head\b[^>]*>", re.I)
 _META_CHARSET_RE = re.compile(r"<meta\b[^>]*charset[^>]*>", re.I)
@@ -71,7 +73,8 @@ def build_snippet(cfg: dict, specific: list[str], exceptions: list[str], generic
     cfg_json = json.dumps(cfg, ensure_ascii=False, separators=(",", ":"))
     cfg_json = cfg_json.replace("<", "\\u003c").replace("\u2028", "\\u2028").replace("\u2029", "\\u2029")
     # スクリプトレットはページのスクリプトより先に動く必要があるため、同じ <script> の先頭に置く
-    js = js_ascii(scriptlet_js + _CONTENT_JS.replace(_PLACEHOLDER, cfg_json))
+    js = js_ascii(scriptlet_js + _CONTENT_JS.replace(_PLACEHOLDER, cfg_json)
+                  + _PICKER_JS.replace(_MAGIC_PLACEHOLDER, json.dumps(MAGIC_ORIGIN)))
     script_hash = _sha256(js)
     parts.append(f"<script>{js}</script>")
     return "".join(parts), script_hash, style_hash

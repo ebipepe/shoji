@@ -122,13 +122,8 @@ def create_app(ctx: AppContext) -> Flask:
         rule = str((request.get_json(force=True) or {}).get("rule", "")).strip()
         if not rule or "\n" in rule or "\r" in rule or len(rule) > 2000:
             return jsonify({"ok": False, "error": "ルールが正しくありません"}), 400
-        p = lists.USER_RULES
-        text = p.read_text(encoding="utf-8") if p.exists() else ""
-        if rule in (line.strip() for line in text.splitlines()):
+        if not lists.add_user_rule(rule):
             return jsonify({"ok": True, "added": False})
-        if text and not text.endswith("\n"):
-            text += "\n"
-        p.write_text(text + rule + "\n", encoding="utf-8")
         threading.Thread(target=lists.load_engine, args=(ctx,), daemon=True).start()
         return jsonify({"ok": True, "added": True})
 

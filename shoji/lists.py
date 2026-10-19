@@ -26,6 +26,25 @@ def ensure_user_rules() -> None:
         USER_RULES.write_text(_USER_RULES_TEMPLATE.read_text(encoding="utf-8"), encoding="utf-8")
 
 
+_RULE_LOCK = threading.Lock()
+
+
+def add_user_rule(rule: str, comment: str = "") -> bool:
+    """ユーザールールに 1 行追加する（同じ行が既にあれば何もしない）。追加したら True"""
+    with _RULE_LOCK:
+        ensure_user_rules()
+        text = USER_RULES.read_text(encoding="utf-8") if USER_RULES.exists() else ""
+        if rule in (line.strip() for line in text.splitlines()):
+            return False
+        if text and not text.endswith("\n"):
+            text += "\n"
+        if comment:
+            text += f"! {comment}\n"
+        USER_RULES.parent.mkdir(parents=True, exist_ok=True)
+        USER_RULES.write_text(text + rule + "\n", encoding="utf-8")
+        return True
+
+
 def _slug(name: str) -> str:
     return re.sub(r"[^a-zA-Z0-9]+", "_", name).strip("_").lower() + ".txt"
 
