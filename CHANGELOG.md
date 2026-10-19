@@ -7,17 +7,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ## [0.4.0] - 2026-10-20
 
 ### Added
-- English user interface. The dashboard, tray menu, block and warning pages, element picker, scam warning,
-  filtering-log details and filter-list descriptions are available in Japanese and English. The language
-  follows the Windows display language by default and can be changed in the dashboard (top right, or Setup).
-  The log file (`shoji.log`) is still in Japanese.
-
-### Changed
-- Filter lists can have mirror URLs; if the main download fails, the mirrors are tried (NoCoin now falls back to jsDelivr).
-- The dashboard's "block rate" tile is now "share of traffic that was ads/trackers", with the blocked count and
-  an explanation, so it is not mistaken for how many ads were caught.
-
-### Added
+- Element picker: press `Alt`+`Shift`+`H` on a page, click what you want gone, adjust with
+  "wider / narrower" or edit the selector, and save it as a site-specific hiding rule. The rule applies
+  immediately. The picker's save endpoint only accepts element-hiding rules for the page's own site.
 - Dangerous-site protection (on by default, "block_malware"): Malicious URL Blocklist (URLhaus), Phishing URL
   Blocklist and NoCoin lists, blocked in browsers and via DNS, with a dedicated warning page that lets you go
   back or proceed for an hour.
@@ -25,13 +17,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   screen-locking behaviour (alert floods, full screen, keyboard/pointer lock, history flooding,
   beforeunload traps) are defused and covered with a warning. More than five dialogs in 30 seconds are
   suppressed on any page.
-- Element picker: press `Alt`+`Shift`+`H` on a page, click what you want gone, adjust with
-  "wider / narrower" or edit the selector, and save it as a site-specific hiding rule. The rule applies
-  immediately. The picker's save endpoint only accepts element-hiding rules for the page's own site.
+- English user interface. The dashboard, tray menu, block and warning pages, element picker, scam warning,
+  filtering-log details and filter-list descriptions are available in Japanese and English. The language
+  follows the Windows display language by default and can be changed in the dashboard (top right, or Setup).
+  The log file (`shoji.log`) is still in Japanese.
 
 ### Changed
+- The dashboard's "block rate" tile is now "share of traffic that was ads/trackers", with the blocked count and
+  an explanation, so it is not mistaken for how many ads were caught.
 - Pages are always fetched fresh (no 304 revalidation) while HTTPS filtering is on, so new rules apply on
   reload instead of a cached copy with the old ones.
+- Filter lists can have mirror URLs; if the main download fails, the mirrors are tried (NoCoin now falls back
+  to jsDelivr).
 
 ## [0.3.0] - 2026-10-19
 
