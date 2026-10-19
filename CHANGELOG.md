@@ -4,7 +4,7 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses
 [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [0.3.0] - 2026-10-19
 
 ### Added
 - Optional annoyance lists (off by default): AdGuard Cookie Notices, Popups, Mobile App Banners, Widgets,
@@ -25,6 +25,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Built-in list of sites that are never decrypted, now covering major banks, brokers, payment services and
   password managers in Japan, the US, the UK, Europe and Australia. It always applies; the dashboard list is
   for your own additions.
+
+### Fixed
+- The dashboard no longer writes every status request to `shoji.log`.
+- Toggle switches in the filter list table were squashed.
 
 ## [0.2.0] - 2026-10-18
 

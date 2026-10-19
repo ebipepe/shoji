@@ -9,6 +9,7 @@ import time
 import urllib.request
 from pathlib import Path
 
+from . import __version__
 from .config import DATA_DIR, LISTS_DIR, RULES_DIR
 from .context import AppContext
 
@@ -82,7 +83,7 @@ def load_engine(ctx: AppContext) -> dict:
 def download(entry: dict, timeout: int = 60) -> bool:
     p = list_file(entry)
     p.parent.mkdir(parents=True, exist_ok=True)
-    req = urllib.request.Request(entry["url"], headers={"User-Agent": "Shoji/0.1"})
+    req = urllib.request.Request(entry["url"], headers={"User-Agent": "Shoji/" + __version__})
     try:
         # 自分自身（システムプロキシ）を経由しないよう直接接続する
         opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
