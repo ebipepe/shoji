@@ -434,7 +434,7 @@ document.querySelectorAll('#period button').forEach(b => b.onclick = () => {
 });
 $('#reset').onclick = async () => { if (confirm('統計をすべて削除しますか？')) { await api('/api/stats/reset', {}); loadReport(); } };
 
-const CAT_LABEL = {ad: '広告', tracker: 'トラッカー', annoyance: '迷惑要素', popup: 'ポップアップ', youtube: '動画広告', reinserted: '再挿入広告', cosmetic: '要素非表示', amp: 'AMP 無効化', stealth_param: '追跡パラメーター除去', stealth_cookie: 'Cookie 遮断', stealth_header: '追跡ヘッダー除去'};
+const CAT_LABEL = {ad: '広告', tracker: 'トラッカー', security: '危険サイト・詐欺', annoyance: '迷惑要素', popup: 'ポップアップ', youtube: '動画広告', reinserted: '再挿入広告', cosmetic: '要素非表示', amp: 'AMP 無効化', stealth_param: '追跡パラメーター除去', stealth_cookie: 'Cookie 遮断', stealth_header: '追跡ヘッダー除去'};
 
 async function loadReport() {
   const r = await api('/api/report?days=' + DAYS);
@@ -527,6 +527,7 @@ const FEATURES = [
   ['block_ads', 'ブラウザ広告をブロック', 'バナー・テキスト広告などの配信元への通信を止めます。'],
   ['youtube_ads', '動画広告をブロック', 'YouTube の再生前・途中の広告、フィード内の広告を除去します。'],
   ['block_trackers', 'トラッカーをブロック', 'アクセス解析・行動追跡スクリプトやビーコンを止めます。'],
+  ['block_malware', '危険なサイト・詐欺ページ対策', 'マルウェア配布・フィッシング・不正な採掘のサイトを警告画面で止め、「ウイルスに感染」などと表示して画面を固めるサポート詐欺のページを無力化します。'],
   ['dns_filtering', 'DNS フィルタリング', 'アプリ内広告を含め、広告ドメインの名前解決を止めます。'],
   ['cname_uncloaking', 'CNAME 偽装トラッカーの検出', 'サイトのサブドメインに見せかけたトラッカーを DNS 応答から見破ります。'],
   ['https_filtering', 'HTTPS フィルタリング', '暗号化された通信の中身を PC 内で処理し、細かいフィルタを適用します。'],
@@ -591,7 +592,7 @@ async function loadConfig() { CFG = await api('/api/config'); renderConfig(); }
 async function loadFilters() {
   const r = await api('/api/lists');
   $('#lists').innerHTML = '<tr><th>有効</th><th>名前</th><th>分類</th><th>最終更新</th><th class="num">サイズ</th></tr>' + r.lists.map((l, i) =>
-    `<tr><td><label class="switch"><input type="checkbox" data-i="${i}" ${l.enabled ? 'checked' : ''}><span></span></label></td><td>${esc(l.name)}${l.desc ? `<div class="muted small">${esc(l.desc)}</div>` : ''}</td><td><span class="tag">${{tracker: 'トラッカー', annoyance: '迷惑要素'}[l.category] || '広告'}</span></td><td>${l.updated ? new Date(l.updated * 1000).toLocaleString('ja-JP') : '<span class="muted">未取得</span>'}</td><td class="num">${l.size ? Math.round(l.size / 1024).toLocaleString() + ' KB' : '-'}</td></tr>`).join('');
+    `<tr><td><label class="switch"><input type="checkbox" data-i="${i}" ${l.enabled ? 'checked' : ''}><span></span></label></td><td>${esc(l.name)}${l.desc ? `<div class="muted small">${esc(l.desc)}</div>` : ''}</td><td><span class="tag">${{tracker: 'トラッカー', annoyance: '迷惑要素', security: '危険サイト'}[l.category] || '広告'}</span></td><td>${l.updated ? new Date(l.updated * 1000).toLocaleString('ja-JP') : '<span class="muted">未取得</span>'}</td><td class="num">${l.size ? Math.round(l.size / 1024).toLocaleString() + ' KB' : '-'}</td></tr>`).join('');
   $('#lists').querySelectorAll('input').forEach(inp => inp.onchange = async () => {
     const fl = CFG.filter_lists.map((l, i) => i === +inp.dataset.i ? Object.assign({}, l, {enabled: inp.checked}) : l);
     const res = await api('/api/config', {filter_lists: fl}); CFG = res.config;

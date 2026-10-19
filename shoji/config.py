@@ -56,6 +56,7 @@ DEFAULT_CONFIG: dict = {
         "https_filtering": True,        # HTTPS フィルタリング
         "dns_filtering": True,          # DNS フィルタリング（アプリ内広告）
         "cname_uncloaking": True,       # CNAME 偽装トラッカー検出
+        "block_malware": True,          # 危険なサイト（マルウェア・フィッシング・採掘）と詐欺ページの対策
     },
     "stealth": {
         "enabled": True,
@@ -104,6 +105,13 @@ DEFAULT_CONFIG: dict = {
         {"name": "uBlock filters", "url": "https://ublockorigin.github.io/uAssets/filters/filters.txt", "category": "ad", "enabled": True},
         {"name": "uBlock Privacy", "url": "https://ublockorigin.github.io/uAssets/filters/privacy.txt", "category": "tracker", "enabled": True},
         {"name": "AdGuard DNS filter", "url": "https://adguardteam.github.io/AdGuardSDNSFilter/Filters/filter.txt", "category": "ad", "enabled": True},
+        # 危険なサイト（malware-filter は CC0、NoCoin は MIT）
+        {"name": "Malicious URL Blocklist (URLhaus)", "url": "https://malware-filter.gitlab.io/malware-filter/urlhaus-filter-ag-online.txt",
+         "category": "security", "enabled": True, "desc": "マルウェアを配布している URL（abuse.ch URLhaus のデータ）"},
+        {"name": "Phishing URL Blocklist", "url": "https://malware-filter.gitlab.io/malware-filter/phishing-filter-ag.txt",
+         "category": "security", "enabled": True, "desc": "フィッシング（偽のログイン画面など）サイト"},
+        {"name": "NoCoin Filter List", "url": "https://raw.githubusercontent.com/hoshsadiq/adblock-nocoin-list/master/nocoin.txt",
+         "category": "security", "enabled": True, "desc": "ブラウザで勝手に仮想通貨を採掘するスクリプト"},
         {"name": "Peter Lowe's list", "url": "https://pgl.yoyo.org/adservers/serverlist.php?hostformat=adblockplus&showintro=0&mimetype=plaintext", "category": "ad", "enabled": True},
         # 迷惑要素（Annoyances）。表示崩れの可能性があるため、最初はオフ
         {"name": "AdGuard Cookie Notices", "url": "https://filters.adtidy.org/extension/ublock/filters/18.txt", "category": "annoyance", "enabled": False,

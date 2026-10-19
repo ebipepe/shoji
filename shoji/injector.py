@@ -41,6 +41,7 @@ def _utf16(c: str):
 
 _CONTENT_JS = _strip_comments((ASSETS_DIR / "content.js").read_text(encoding="utf-8"))
 _PICKER_JS = _strip_comments((ASSETS_DIR / "picker.js").read_text(encoding="utf-8"))
+_GUARD_JS = _strip_comments((ASSETS_DIR / "guard.js").read_text(encoding="utf-8"))
 _PLACEHOLDER = "window.__SHOJI_CFG__"
 _MAGIC_PLACEHOLDER = "window.__SHOJI_MAGIC__"
 
@@ -73,7 +74,8 @@ def build_snippet(cfg: dict, specific: list[str], exceptions: list[str], generic
     cfg_json = json.dumps(cfg, ensure_ascii=False, separators=(",", ":"))
     cfg_json = cfg_json.replace("<", "\\u003c").replace("\u2028", "\\u2028").replace("\u2029", "\\u2029")
     # スクリプトレットはページのスクリプトより先に動く必要があるため、同じ <script> の先頭に置く
-    js = js_ascii(scriptlet_js + _CONTENT_JS.replace(_PLACEHOLDER, cfg_json)
+    # 詐欺ページ対策はページのスクリプトより先に alert 等を見張る必要があるため、最初に置く
+    js = js_ascii(_GUARD_JS.replace(_PLACEHOLDER, cfg_json) + scriptlet_js + _CONTENT_JS.replace(_PLACEHOLDER, cfg_json)
                   + _PICKER_JS.replace(_MAGIC_PLACEHOLDER, json.dumps(MAGIC_ORIGIN)))
     script_hash = _sha256(js)
     parts.append(f"<script>{js}</script>")
@@ -178,34 +180,53 @@ def blocked_frame_html() -> str:
 
 def blocked_page_html(url: str, host: str, category: str, rule: str) -> str:
     import html as _h
-    label = "トラッカー" if category == "tracker" else "広告"
     allow = f"{MAGIC_ORIGIN}/allow?url=" + _url_quote(url)
-    return f"""<!doctype html><html lang="ja"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1"><title>ブロックしました</title>
-<style>
-:root{{color-scheme:light dark;--bg:#f6f7f9;--fg:#1d2330;--mut:#667085;--card:#fff;--acc:#2f6fed;--bd:#e3e6ec}}
-@media (prefers-color-scheme:dark){{:root{{--bg:#12151b;--fg:#e8eaee;--mut:#98a2b3;--card:#1b2029;--bd:#2a313d}}}}
-body{{margin:0;font:15px/1.7 system-ui,"Segoe UI","Hiragino Sans","Yu Gothic UI",sans-serif;background:var(--bg);color:var(--fg);display:grid;place-items:center;min-height:100vh}}
-.c{{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:28px 32px;max-width:560px;margin:16px}}
-h1{{font-size:20px;margin:0 0 8px}} p{{color:var(--mut);margin:6px 0}} code{{word-break:break-all;font-size:12px}}
-.b{{display:flex;gap:10px;margin-top:18px;flex-wrap:wrap}}
-a.btn{{padding:8px 16px;border-radius:8px;text-decoration:none;border:1px solid var(--bd);color:var(--fg)}}
-a.pri{{background:var(--acc);color:#fff;border-color:var(--acc)}}
-</style></head><body><div class="c">
-<h1>{label}ページをブロックしました</h1>
-<p><b>{_h.escape(host)}</b> は{label}配信先としてフィルタに登録されています。</p>
-<p><code>{_h.escape(url[:300])}</code></p>
-<p style="font-size:12px">ルール: <code>{_h.escape(rule[:200])}</code></p>
-<div class="b"><a class="btn pri" href="javascript:history.back()">戻る</a>
-<a class="btn" href="{_h.escape(allow)}">このまま開く（1時間許可）</a></div>
-<p style="font-size:12px;margin-top:18px">Shoji</p></div>
-<script>
-// ポップアップ/新しいタブとして開かれた広告ならそのまま閉じる
+    danger = category == "security"
+    if danger:
+        title = "危険なサイトをブロックしました"
+        lead = (f"<b>{_h.escape(host)}</b> は、マルウェアの配布・フィッシング詐欺・不正な仮想通貨の採掘などに"
+                "使われているサイトとして、公開されている危険サイトのリストに登録されています。")
+        extra = ("<p class=\"warn\">パスワードやカード番号を入力したり、ファイルをダウンロードしたりしないでください。"
+                 "心当たりのないメールや SMS のリンクから来た場合は、そのまま閉じてください。</p>")
+        allow_label = "危険を理解したうえで開く（1時間）"
+        acc = "#c43c3b"
+    else:
+        label = "トラッカー" if category == "tracker" else "広告"
+        title = f"{label}ページをブロックしました"
+        lead = f"<b>{_h.escape(host)}</b> は{label}配信先としてフィルタに登録されています。"
+        extra = ""
+        allow_label = "このまま開く（1時間許可）"
+        acc = "#2f6fed"
+    # 広告のポップアップ/新しいタブならそのまま閉じる（危険サイトの警告は閉じずに見せる）
+    auto_close = "" if danger else f"""<script>
 if (window.opener || (history.length <= 1 && document.referrer)) {{
   try {{ navigator.sendBeacon('{MAGIC_ORIGIN}/report', JSON.stringify({{host: location.hostname, counts: {{popup: 1}}}})); }} catch (e) {{}}
   setTimeout(function () {{ window.close(); }}, 50);
 }}
-</script></body></html>"""
+</script>"""
+    return f"""<!doctype html><html lang="ja"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>{title}</title>
+<style>
+:root{{color-scheme:light dark;--bg:#f6f7f9;--fg:#1d2330;--mut:#667085;--card:#fff;--acc:{acc};--bd:#e3e6ec}}
+@media (prefers-color-scheme:dark){{:root{{--bg:#12151b;--fg:#e8eaee;--mut:#98a2b3;--card:#1b2029;--bd:#2a313d}}}}
+body{{margin:0;font:15px/1.7 system-ui,"Segoe UI","Hiragino Sans","Yu Gothic UI",sans-serif;background:var(--bg);color:var(--fg);display:grid;place-items:center;min-height:100vh}}
+.c{{background:var(--card);border:1px solid var(--bd);border-top:4px solid var(--acc);border-radius:14px;padding:28px 32px;max-width:560px;margin:16px}}
+h1{{font-size:20px;margin:0 0 8px}} p{{color:var(--mut);margin:6px 0}} code{{word-break:break-all;font-size:12px}}
+.warn{{color:var(--fg);font-weight:600}}
+.b{{display:flex;gap:10px;margin-top:18px;flex-wrap:wrap}}
+a.btn{{padding:8px 16px;border-radius:8px;text-decoration:none;border:1px solid var(--bd);color:var(--fg)}}
+a.pri{{background:var(--acc);color:#fff;border-color:var(--acc)}}
+a.sub{{font-size:12.5px;color:var(--mut)}}
+</style></head><body><div class="c">
+<h1>{title}</h1>
+<p>{lead}</p>
+{extra}
+<p><code>{_h.escape(url[:300])}</code></p>
+<p style="font-size:12px">ルール: <code>{_h.escape(rule[:200])}</code></p>
+<div class="b"><a class="btn pri" href="javascript:history.back()">戻る</a>
+<a class="btn{' sub' if danger else ''}" href="{_h.escape(allow)}">{allow_label}</a></div>
+<p style="font-size:12px;margin-top:18px">Shoji</p></div>
+{auto_close}</body></html>"""
 
 
 def _url_quote(u: str) -> str:

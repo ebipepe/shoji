@@ -7,6 +7,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ## [Unreleased]
 
 ### Added
+- Dangerous-site protection (on by default, "block_malware"): Malicious URL Blocklist (URLhaus), Phishing URL
+  Blocklist and NoCoin lists, blocked in browsers and via DNS, with a dedicated warning page that lets you go
+  back or proceed for an hour.
+- Tech-support-scam guard: pages that combine scam wording (virus warnings, support phone numbers) with
+  screen-locking behaviour (alert floods, full screen, keyboard/pointer lock, history flooding,
+  beforeunload traps) are defused and covered with a warning. More than five dialogs in 30 seconds are
+  suppressed on any page.
 - Element picker: press `Alt`+`Shift`+`H` on a page, click what you want gone, adjust with
   "wider / narrower" or edit the selector, and save it as a site-specific hiding rule. The rule applies
   immediately. The picker's save endpoint only accepts element-hiding rules for the page's own site.

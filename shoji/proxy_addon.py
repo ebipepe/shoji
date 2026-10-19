@@ -47,7 +47,16 @@ _EXT_MAP = [
 _GIF_1x1 = (b"GIF89a\x01\x00\x01\x00\x80\x00\x00\x00\x00\x00\x00\x00\x00!\xf9\x04\x01\x00\x00\x00\x00,"
             b"\x00\x00\x00\x00\x01\x00\x01\x00\x00\x02\x02D\x01\x00;")
 _PAGE_REPORT_KINDS = {"popup": "document", "cosmetic": None, "reinserted": None, "amp": None,
-                      "youtube": None, "stealth_param": None}
+                      "youtube": None, "stealth_param": None, "security": "document"}
+
+
+def _should_block(cat: str, F: dict) -> bool:
+    """分類と機能設定から、ブロックするかを決める"""
+    if cat == "security":
+        return F.get("block_malware", True)
+    if cat == "tracker":
+        return F["block_trackers"]
+    return F["block_ads"]          # ad / annoyance
 
 
 def guess_type(req: http.Request) -> str:
@@ -157,7 +166,7 @@ class ShojiAddon:
         # 復号しないホストでも、ドメイン単位の広告/トラッカーはここで遮断する
         cat = self.engine.dns_lookup(host)
         F = self.ctx.cfg["features"]
-        if cat and ((cat == "ad" and F["block_ads"]) or (cat == "tracker" and F["block_trackers"])):
+        if cat and _should_block(cat, F):
             self.ctx.stats.record(cat, "proxy", host, "other", detail="CONNECT " + host)
             self.ctx.reqlog.add(reqlog.BLOCKED, f"https://{host}/", host, method="CONNECT", cat=cat,
                                 rule=self.engine.dns_rule_text(host),
@@ -279,13 +288,12 @@ class ShojiAddon:
                 req.url = new_url
                 url = new_url
 
-        # 広告 / トラッカーのブロック
-        if F["block_ads"] or F["block_trackers"]:
+        # 広告 / トラッカー / 危険なサイトのブロック
+        if F["block_ads"] or F["block_trackers"] or F.get("block_malware", True):
             rule = self.engine.match_url(url, host, page_host, rtype)
             if rule:
                 cat = self.engine.categorize(host, rule.category)
-                if ((cat in ("ad", "annoyance") and F["block_ads"])
-                        or (cat == "tracker" and F["block_trackers"])):
+                if _should_block(cat, F):
                     _log(reqlog.BLOCKED, rule=rule.raw, cat=cat)
                     return self._block(flow, rule, cat, rtype, host, url)
 

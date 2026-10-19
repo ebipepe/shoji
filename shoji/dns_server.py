@@ -144,7 +144,8 @@ class DnsFilter:
 
         if F.get("dns_filtering", True) and not allowed:
             cat = self.ctx.engine.dns_lookup(name)
-            if cat and ((cat == "ad" and F["block_ads"]) or (cat == "tracker" and F["block_trackers"])):
+            if cat and ((cat == "ad" and F["block_ads"]) or (cat == "tracker" and F["block_trackers"])
+                        or (cat == "security" and F.get("block_malware", True))):
                 stats.record(cat, "dns", name, "dns", detail=f"{QTYPE.get(q.qtype)} from {client}")
                 self.ctx.reqlog.add("blocked", name, name, src="dns", method=str(QTYPE.get(q.qtype)), cat=cat,
                                     rule=self.ctx.engine.dns_rule_text(name), detail="DNS で名前解決をブロック")

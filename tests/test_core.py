@@ -209,6 +209,24 @@ def test_picker_rule_validation():
             assert "example.com##.promo" in (Path(d) / "user_rules.txt").read_text(encoding="utf-8")
 
 
+def test_security_lists():
+    from shoji.filters import FilterEngine
+    from shoji.injector import blocked_page_html
+    from shoji.proxy_addon import _should_block
+    e = FilterEngine()
+    e.load([("ads", "||evil.example^\n||ads.example^\n", "ad"),
+            ("mal", "||evil.example^$all\n||phish.example/login^\n||miner.example^$third-party\n", "security")])
+    assert e.dns_lookup("www.evil.example") == "security"            # 広告より危険サイトを優先
+    assert e.dns_lookup("miner.example") == "security"
+    assert e.dns_lookup("ads.example") == "ad"
+    rule = e.match_url("https://phish.example/login?x=1", "phish.example", "phish.example", "document")
+    assert rule and e.categorize("phish.example", rule.category) == "security"
+    F = {"block_ads": False, "block_trackers": False, "block_malware": True}
+    assert _should_block("security", F) and not _should_block("ad", F)
+    html = blocked_page_html("https://evil.example/", "evil.example", "security", "||evil.example^")
+    assert "危険なサイト" in html and "window.close" not in html     # 危険サイトの警告は自動で閉じない
+
+
 if __name__ == "__main__":
     for name, fn in list(globals().items()):
         if name.startswith("test_"):

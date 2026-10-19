@@ -29,6 +29,9 @@ Filter lists (downloaded at runtime from their maintainers, not bundled):
   uBlock Origin filters         https://github.com/uBlockOrigin/uAssets (GPLv3)
   AdGuard DNS filter            https://github.com/AdguardTeam/AdGuardSDNSFilter (GPLv3)
   Peter Lowe's Ad and tracking server list   https://pgl.yoyo.org/adservers/
+  Malicious URL Blocklist / Phishing URL Blocklist (malware-filter, CC0; data from abuse.ch URLhaus and others)
+                                https://gitlab.com/malware-filter
+  NoCoin Filter List            https://github.com/hoshsadiq/adblock-nocoin-list (MIT)
 
 Each list remains under its own license and is used unmodified. Shoji's own
 built-in rules (rules/builtin_*.txt) are original to this project.

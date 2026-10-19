@@ -43,6 +43,7 @@ Everything happens on your machine. Nothing is sent to any Shoji server, because
 | **Affiliate banners** | Optionally hides banner images that a site hosts itself and wraps in affiliate links (`rel="sponsored"`, Amazon, Rakuten, A8, …). |
 | **Stealth mode** | Strips tracking parameters (`utm_*`, `fbclid`, `gclid`, …), hides your search terms from destination sites, trims referrers, blocks tracker cookies, sends DNT/GPC, removes high-entropy Client Hints and `X-Client-Data`, prevents WebRTC IP leaks and resists screen/hardware/canvas fingerprinting. |
 | **AMP off** | Redirects Google AMP viewer/cache URLs and AMP pages to the publisher's normal page. |
+| **Dangerous sites & scams** | Warns before opening known malware, phishing and cryptomining sites (URLhaus, phishing and NoCoin lists), and defuses tech-support-scam pages that lock the screen with endless alerts, full screen and back-button traps. |
 | **Annoyances** | Optional AdGuard lists that hide cookie notices, in-page pop-ups, chat widgets, app banners and social buttons (off by default). |
 | **Element picker** | Press `Alt`+`Shift`+`H` on any page, click the thing you want gone, and Shoji saves a "hide this on this site" rule. |
 | **Filtering log** | A live list of recent requests and what Shoji did with each (blocked, passed, modified, not decrypted, page fixes), with the matching rule and one-click **Allow / Block** that writes a user rule. Kept in memory only. |

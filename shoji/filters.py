@@ -319,6 +319,7 @@ class FilterEngine:
         self.dns_allow: set[str] = set()
         self.tracker_hosts: set[str] = set()      # トラッカー系リストに載っているホスト
         self.ad_hosts: set[str] = set()           # 広告系リストに載っているホスト
+        self.security_hosts: set[str] = set()     # マルウェア・フィッシング・採掘スクリプトのホスト
         self.host_rules: dict[str, list[NetRule]] = defaultdict(list)
         self.host_exc: dict[str, list[NetRule]] = defaultdict(list)
         self.token_rules: dict[str, list[NetRule]] = defaultdict(list)
@@ -386,7 +387,13 @@ class FilterEngine:
         if cat == "annoyance":
             # 迷惑要素リストのドメインは、アプリ全体の DNS では止めない（ブラウザのページ内でだけ扱う）
             return
-        if self.dns_block.get(d) != "tracker":
+        if cat == "security":
+            # 危険なサイトは他の分類より優先する
+            self.dns_block[d] = "security"
+            self.security_hosts.add(d)
+            self.counts["dns"] += 1
+            return
+        if self.dns_block.get(d) not in ("tracker", "security"):
             self.dns_block[d] = cat
         (self.tracker_hosts if cat == "tracker" else self.ad_hosts).add(d)
         self.counts["dns"] += 1
@@ -499,7 +506,7 @@ class FilterEngine:
             if pm:
                 host = pm.group(1).lower()
                 if not exception and rule.removeparam is None and not rule.domains and cat != "annoyance":
-                    (self.tracker_hosts if cat == "tracker" else self.ad_hosts).add(host)
+                    {"tracker": self.tracker_hosts, "security": self.security_hosts}.get(cat, self.ad_hosts).add(host)
                 if (not types and not rule.domains and not rule.not_domains
                         and rule.removeparam is None
                         and all(o.strip().lstrip("~").split("=")[0].lower() in _DNS_OK_OPTS
@@ -610,6 +617,8 @@ class FilterEngine:
     def categorize(self, host: str, default: str = "ad") -> str:
         """広告/トラッカーの分類。両方のリストに載っている場合はマッチしたルールの分類を使う"""
         in_t = in_a = False
+        if default == "security" or any(s in self.security_hosts for s in host_suffixes(host)):
+            return "security"
         for s in host_suffixes(host):
             in_t = in_t or s in self.tracker_hosts
             in_a = in_a or s in self.ad_hosts
