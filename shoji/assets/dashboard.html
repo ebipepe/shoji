@@ -440,7 +440,7 @@ async function loadReport() {
   const r = await api('/api/report?days=' + DAYS);
   const T = k => (r.totals[k] || {}).count || 0;
   const src = (k, s) => ((r.by_source[k] || {})[s] || 0);
-  const kpi = (label, value, sub, color) => `<div class="card kpi"><div class="label">${color ? `<span class="dot" style="background:${color}"></span>` : ''}${label}</div><div class="value">${value}</div><div class="sub">${sub || '&nbsp;'}</div></div>`;
+  const kpi = (label, value, sub, color, tip) => `<div class="card kpi"${tip ? ` title="${tip}"` : ''}><div class="label">${color ? `<span class="dot" style="background:${color}"></span>` : ''}${label}</div><div class="value">${value}</div><div class="sub">${sub || '&nbsp;'}</div></div>`;
   $('#kpis').innerHTML =
     kpi('ブロックした広告', fmt(T('ad')), `ブラウザ ${fmt(src('ad','proxy'))} / DNS ${fmt(src('ad','dns'))}`, 'var(--series-1)') +
     kpi('ブロックしたトラッカー', fmt(T('tracker')), `ブラウザ ${fmt(src('tracker','proxy'))} / DNS ${fmt(src('tracker','dns'))}`, 'var(--series-2)') +
@@ -448,7 +448,9 @@ async function loadReport() {
     kpi('短縮した読み込み時間', dur(r.saved_ms), '推定値') +
     kpi('動画広告', fmt(T('youtube')), 'YouTube 等') +
     kpi('ポップアップ', fmt(T('popup')), '新しいウィンドウ・オーバーレイ') +
-    kpi('ブロック率', (r.block_ratio * 100).toFixed(1) + '%', `全 ${fmt(T('request') + T('dns_query'))} 件の通信のうち`);
+    kpi('通信に占める広告・トラッカー', (r.block_ratio * 100).toFixed(1) + '%',
+        `全 ${fmt(T('request') + T('dns_query'))} 件の通信のうち ${fmt(T('ad') + T('tracker'))} 件をブロック`, '',
+        'この PC のブラウザ・アプリが行った通信のうち、広告・トラッカーへの通信としてブロックした割合です。広告をどれだけ止められたか（取りこぼし）を表す数字ではありません。');
   // 内訳
   $('#breakdown').innerHTML = '<tr><th>機能</th><th class="num">件数</th></tr>' +
     Object.keys(CAT_LABEL).map(k => `<tr><td>${CAT_LABEL[k]}</td><td class="num">${fmt(T(k))}</td></tr>`).join('');

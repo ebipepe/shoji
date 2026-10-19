@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Changed
+- The dashboard's "block rate" tile is now "share of traffic that was ads/trackers", with the blocked count and
+  an explanation, so it is not mistaken for how many ads were caught.
+
 ### Added
 - Dangerous-site protection (on by default, "block_malware"): Malicious URL Blocklist (URLhaus), Phishing URL
   Blocklist and NoCoin lists, blocked in browsers and via DNS, with a dedicated warning page that lets you go
