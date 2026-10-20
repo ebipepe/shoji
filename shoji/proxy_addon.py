@@ -382,7 +382,7 @@ class ShojiAddon:
                 del h["cookie"]
                 flow.metadata["kk"]["notes"].append(t("log.cookie"))
                 self.ctx.stats.record("stealth_cookie", "proxy", host, count_bytes=False,
-                                      detail="Cookie 送信を遮断")
+                                      detail=t("stat.cookie_send"))
         if changed:
             self.ctx.stats.record("stealth_header", "proxy", "", count=1, count_bytes=False)
 
@@ -409,7 +409,7 @@ class ShojiAddon:
                 n = len(resp.headers.get_all("set-cookie"))
                 del resp.headers["set-cookie"]
                 self.ctx.stats.record("stealth_cookie", "proxy", host, count=n, count_bytes=False,
-                                      detail="トラッカー Cookie の保存を遮断")
+                                      detail=t("stat.cookie_store"))
             else:
                 hours = S.get("first_party_cookie_max_age_hours") or 0
                 if hours > 0:
@@ -443,7 +443,7 @@ class ShojiAddon:
                 new, n = youtube.prune_json_bytes(resp.content)
                 if n:
                     resp.content = new
-                    stats.record("ad", "proxy", host, "media", count=n, detail="YouTube 動画広告 (API)")
+                    stats.record("ad", "proxy", host, "media", count=n, detail=t("stat.youtube_api"))
                     stats.record("youtube", "proxy", host, "media", count=n, count_bytes=False,
                                  detail=flow.request.path)
                     self.ctx.reqlog.add(reqlog.MODIFIED, flow.request.pretty_url, host, rtype="xmlhttprequest",
@@ -474,7 +474,7 @@ class ShojiAddon:
             text, n = youtube.prune_html(text)
             if n:
                 modified = True
-                stats.record("ad", "proxy", host, "media", count=1, detail="YouTube 動画広告 (ページ)")
+                stats.record("ad", "proxy", host, "media", count=1, detail=t("stat.youtube_page"))
                 stats.record("youtube", "proxy", host, "media", count=n, count_bytes=False, detail=url[:200])
                 self.ctx.reqlog.add(reqlog.MODIFIED, url, host, rtype="document", page=host, cat="ad",
                                     detail=t("log.youtube", n=n))
@@ -575,7 +575,7 @@ class ShojiAddon:
             else:
                 flow.response = http.Response.make(404, b"certificate not generated yet")
         else:
-            flow.response = http.Response.make(200, "Shoji は動作中です".encode("utf-8"),
+            flow.response = http.Response.make(200, t("magic.running").encode("utf-8"),
                                                {"Content-Type": "text/plain; charset=utf-8"})
 
     def _allow_site(self, flow: http.HTTPFlow, req: http.Request) -> None:

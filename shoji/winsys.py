@@ -206,7 +206,7 @@ def install_ca_cert() -> tuple[bool, str]:
     if not p.exists():
         return False, t("cert.missing")
     if not IS_WIN:
-        return False, f"証明書を手動でインストールしてください: {p}"
+        return False, t("cert.manual", path=p)
     r = subprocess.run(["certutil", "-user", "-addstore", "Root", str(p)], capture_output=True,
                        text=True, timeout=120, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
     if r.returncode == 0 and ca_cert_installed_fresh():

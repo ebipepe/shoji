@@ -34,7 +34,7 @@ class AppContext:
         # 証明書を受け付けないアプリ（プロセス名）。このアプリの通信は復号しない
         self.untrusting_file = DATA_DIR / "untrusting_apps.json"
         self.untrusting_apps: set[str] = self._load_json_set(self.untrusting_file)
-        self.status: dict = {"proxy": "stopped", "dns": "stopped", "lists": "未読込"}
+        self.status: dict = {"proxy": "stopped", "dns": "stopped", "lists": None}
         # 一時停止中はフィルタを一切かけず、そのまま通す
         self.paused = False
         self.on_pause_change: list = []

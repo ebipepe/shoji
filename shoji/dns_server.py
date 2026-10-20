@@ -23,6 +23,7 @@ from dnslib import AAAA, QTYPE, RCODE, RR, A, DNSRecord
 
 from .config import is_whitelisted
 from .context import AppContext
+from . import i18n
 from .i18n import t
 
 
@@ -172,7 +173,7 @@ class DnsFilter:
                     target = str(rr.rdata).rstrip(".").lower()
                     cat = self.ctx.engine.dns_lookup(target)
                     if cat and F["block_trackers"]:
-                        stats.record("tracker", "dns", name, "dns", detail=f"CNAME 偽装 → {target}")
+                        stats.record("tracker", "dns", name, "dns", detail=i18n.t("log.cname", target=target))
                         self.ctx.reqlog.add("blocked", name, name, src="dns", method=str(QTYPE.get(q.qtype)),
                                             cat="tracker", rule=self.ctx.engine.dns_rule_text(target),
                                             detail=t("log.cname", target=target))
@@ -203,7 +204,7 @@ class DnsFilter:
                 self.servers.append(srv)
                 started.append(f"{kind}://[{h}]:{port}" if ":" in h else f"{kind}://{h}:{port}")
         if not started:
-            raise OSError("DNS サーバーを起動できません: " + "; ".join(errors))
+            raise OSError(i18n.t("dns.start_failed", errors="; ".join(errors)))
         return started
 
     def _make_server(self, kind: str, host: str, port: int):

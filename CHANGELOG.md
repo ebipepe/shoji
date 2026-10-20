@@ -21,9 +21,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   The most common Google ad/analytics scripts get a stand-in automatically when blocked, even without a
   `$redirect` rule. Blocked images are answered with a transparent image instead of an error.
 
+### Changed
+- Stealth mode: the "maximum lifetime of first-party cookies" setting now has an explanation of what it does.
+
 ### Fixed
 - `@@…$redirect` exception rules no longer allow the request; they only turn off the stand-in.
   `$redirect-rule` filters no longer block on their own.
+- A few statistics details and messages (cookie blocking, YouTube ads, CNAME cloaking, DNS start errors) were
+  always in Japanese; they now follow the display language.
 
 ## [0.4.1] - 2026-10-20
 
