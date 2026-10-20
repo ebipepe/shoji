@@ -7,7 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ## [Unreleased]
 
 ### Added
-- "Turn Shoji off on this site": press `Alt`+`Shift`+`P` on a page to open a Shoji confirmation page where you
+- "Turn Shoji off on this site": press `Ctrl`+`Shift`+`Alt`+`P` on a page to open a Shoji confirmation page where you
   can turn filtering off on that site for an hour or always (adds it to the allowlist). The dashboard's
   Allowlist tab also lists recently opened sites with a one-click "Allow" button. Dangerous-site blocking
   still applies to third-party requests on allowlisted sites.
@@ -19,6 +19,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   `https://shoji.blocker/...` directly.
 
 ### Changed
+- Keyboard shortcuts are now `Ctrl`+`Shift`+`Alt`+`H` (element picker) and `Ctrl`+`Shift`+`Alt`+`P` (turn off on
+  this site). `Alt`+`Shift`+letter clashes with Chrome/Edge shortcuts and with page access keys in Firefox.
+  Shortcuts are ignored while typing in a text field.
 - Pages that Shoji modified are sent with `Cache-Control: no-store`, so turning a site off or changing rules
   is not hidden by a cached, already-filtered copy.
 

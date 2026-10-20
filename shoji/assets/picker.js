@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: Apache-2.0 | Copyright 2026 The Shoji Authors */
 /* Shoji 要素の選択ブロック
- * Alt+Shift+H で起動し、隠したい部分をクリックすると「このサイトだけで隠す」ルールを作って保存する。
+ * Ctrl+Shift+Alt+H で起動し、隠したい部分をクリックすると「このサイトだけで隠す」ルールを作って保存する。
  * 画面の部品は閉じた Shadow DOM に入れ、ページの CSS の影響を受けないようにする。
  */
 (function (OPT) {
@@ -215,14 +215,20 @@
       .catch(function () { msg(T.offline); q('save').disabled = false; });
   }
 
-  // Alt+Shift+H: 要素の選択ブロックを起動 / 終了
-  // Alt+Shift+P: このサイトで Shoji を止める（Shoji の確認画面を開く）
+  // Ctrl+Shift+Alt+H: 要素の選択ブロックを起動 / 終了
+  // Ctrl+Shift+Alt+P: このサイトで Shoji を止める（Shoji の確認画面を開く）
+  // Alt+Shift+文字 は Chrome / Edge のショートカット（Alt+Shift+T/I/A/N/P など）や、Firefox でページの
+  // アクセスキー（Wikipedia の Alt+Shift+H など）と重なるため、3 つの修飾キーの組み合わせにしている。
+  // 文字入力中は反応しない（AltGr を使うキーボード配列での文字入力と重ならないように）。
+  function typing(t) {
+    return t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName || ''));
+  }
   document.addEventListener('keydown', function (e) {
-    if (!e.altKey || !e.shiftKey || e.ctrlKey || e.metaKey) return;
-    if (e.code === 'KeyH' || e.key === 'H' || e.key === 'h') {
+    if (!e.altKey || !e.shiftKey || !e.ctrlKey || e.metaKey || typing(e.target)) return;
+    if (e.code === 'KeyH') {
       e.preventDefault(); e.stopPropagation();
       if (host) stop(); else start();
-    } else if (e.code === 'KeyP' || e.key === 'P' || e.key === 'p') {
+    } else if (e.code === 'KeyP') {
       e.preventDefault(); e.stopPropagation();
       location.href = MAGIC + '/allow-site?host=' + encodeURIComponent(SITE) + '&return=' + encodeURIComponent(location.href);
     }
