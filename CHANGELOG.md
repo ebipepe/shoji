@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-10-20
+
 ### Added
 - Extended CSS (procedural cosmetic filters) for site-specific rules: `:has-text()` / `:contains()`, `:has()` /
   `:not()` with procedural arguments, `:upward()` / `:nth-ancestor()`, `:xpath()`, `:matches-css()` (incl. `before`
