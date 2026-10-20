@@ -47,6 +47,23 @@ class AppContext:
     def cfg(self) -> dict:
         return self.config.get()
 
+    # ---- Shoji 自身の画面（ブロック画面・確認画面）から許可するときの使い捨てトークン
+    # どのページからでも https://shoji.blocker/... を呼べてしまうため、Shoji が表示した画面の
+    # ボタンからの操作であることを、画面に埋め込んだトークンで確かめる。
+    def issue_token(self, purpose: str, host: str, seconds: int = 900) -> str:
+        import secrets
+        tok = secrets.token_urlsafe(18)
+        now = time.time()
+        with self._lock:
+            self._tokens = {k: v for k, v in getattr(self, "_tokens", {}).items() if v[2] > now}
+            self._tokens[tok] = (purpose, host.lower(), now + seconds)
+        return tok
+
+    def use_token(self, tok: str, purpose: str, host: str) -> bool:
+        with self._lock:
+            v = getattr(self, "_tokens", {}).pop(tok or "", None)
+        return bool(v) and v[0] == purpose and v[1] == host.lower() and v[2] > time.time()
+
     def allow_temporarily(self, host: str, seconds: int = 3600) -> None:
         with self._lock:
             self._temp_allow[host.lower()] = time.time() + seconds

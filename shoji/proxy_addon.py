@@ -215,19 +215,15 @@ class ShojiAddon:
             return
         if proc:
             if self.ctx.add_untrusting_app(proc):
-                hint = ("（Firefox は再起動すると Windows の証明書を使うようになります）"
-                        if winsys.is_own_store_browser(proc) else "")
-                print(f"[proxy] {proc} は証明書を受け付けないため、このアプリの通信は HTTPS フィルタリング"
-                      f"せずに通します{hint}")
+                hint = t("msg.ff_hint") if winsys.is_own_store_browser(proc) else ""
+                print(t("msg.app_untrust", app=proc, hint=hint))
             return
         # 接続元アプリが分からない場合だけ、ホスト単位で除外する
         r = self.ctx.tls_failed(sni)
         if r == "host":
-            print(f"[proxy] {sni} は証明書を受け付けないため、以後は HTTPS 復号の対象外にします")
+            print(t("msg.host_untrust", host=sni))
         elif r == "global":
-            print("[proxy] 複数のサイトで証明書が拒否されました。ルート証明書が信頼されていないため、"
-                  "HTTPS フィルタリングを一時停止しました（広告ドメインのブロックは継続します）。"
-                  "ダッシュボードの「セットアップ」で証明書をインストールし、ブラウザを再起動してください。")
+            print(t("msg.global_untrust"))
 
     # ------------------------------------------------------------ リクエスト
     def request(self, flow: http.HTTPFlow) -> None:
@@ -255,6 +251,13 @@ class ShojiAddon:
         def _log(action, **kw):
             meta["log"] = log.add(action, url, host, rtype=rtype, method=req.method, page=page_host, **kw)
 
+        if (not self.ctx.paused and F.get("block_malware", True) and page_host and page_host != host
+                and self.ctx.is_allowed(page_host) and not self.ctx.is_allowed(host)):
+            # 許可リストのサイトに埋め込まれた他サイトの通信でも、危険サイトだけは止める
+            rule = self.engine.match_url(url, host, page_host, rtype)
+            if rule and self.engine.categorize(host, rule.category) == "security":
+                _log(reqlog.BLOCKED, rule=rule.raw, cat="security")
+                return self._block(flow, rule, "security", rtype, host, url)
         if self.ctx.paused or self.ctx.is_allowed(host, page_host):
             meta["allowed"] = True
             _log(reqlog.ALLOWED, detail=t("log.paused") if self.ctx.paused else t("log.allowlist"))
@@ -315,7 +318,8 @@ class ShojiAddon:
             stats.record("youtube", "proxy", host, rtype, count_bytes=False, detail=url[:200])
         redirect = (rule.redirect or "").lower()
         if rtype == "document":
-            self._respond(flow, 200, injector.blocked_page_html(url, host, cat, rule.raw),
+            self._respond(flow, 200, injector.blocked_page_html(url, host, cat, rule.raw,
+                                                                self.ctx.issue_token("allow", host)),
                           "text/html; charset=utf-8")
         elif rtype == "sub_frame":
             self._respond(flow, 200, injector.blocked_frame_html(), "text/html; charset=utf-8")
@@ -504,6 +508,11 @@ class ShojiAddon:
         if modified:
             resp.content = text.encode(enc, "surrogateescape")
             resp.headers.pop("content-md5", None)
+            # 加工したページはブラウザに保存させない。保存されると、サイトを許可したりルールを変えたりしても
+            # 古い加工済みのページが使われてしまう
+            resp.headers["cache-control"] = "no-store"
+            for name in ("etag", "last-modified", "expires"):
+                resp.headers.pop(name, None)
 
     # ------------------------------------------------------------ 内部エンドポイント
     def _serve_magic(self, flow: http.HTTPFlow) -> None:
@@ -528,10 +537,14 @@ class ShojiAddon:
             ok, payload = self._picker_rule(req)
             flow.response = http.Response.make(200 if ok else 400, json.dumps(payload, ensure_ascii=False).encode("utf-8"),
                                                {"Content-Type": "application/json", "Cache-Control": "no-store", **cors})
+        elif path == "/allow-site":
+            self._allow_site(flow, req)
         elif path == "/allow":
-            target = parse_qs(urlsplit(req.pretty_url).query).get("url", [""])[0]
+            qs = parse_qs(urlsplit(req.pretty_url).query)
+            target = qs.get("url", [""])[0]
             h = _host_of(target)
-            if h and target.startswith(("http://", "https://")):
+            # ブロック画面のボタンから来たときだけ許可する（他のページが勝手に許可できないように）
+            if h and target.startswith(("http://", "https://")) and self.ctx.use_token(qs.get("t", [""])[0], "allow", h):
                 self.ctx.allow_temporarily(h)
                 flow.response = http.Response.make(302, b"", {"Location": target, "Cache-Control": "no-store"})
             else:
@@ -547,6 +560,44 @@ class ShojiAddon:
         else:
             flow.response = http.Response.make(200, "Shoji は動作中です".encode("utf-8"),
                                                {"Content-Type": "text/plain; charset=utf-8"})
+
+    def _allow_site(self, flow: http.HTTPFlow, req: http.Request) -> None:
+        """「このサイトでは止める」の確認画面（GET）と、その画面のボタンからの実行（POST）"""
+        if req.method == "GET":
+            qs = parse_qs(urlsplit(req.pretty_url).query)
+            host = qs.get("host", [""])[0].lower().strip(".")
+            ret = qs.get("return", [""])[0]
+            if not re.fullmatch(r"[a-z0-9.-]+\.[a-z0-9-]+", host or ""):
+                flow.response = http.Response.make(400, b"bad host", {"Content-Type": "text/plain"})
+                return
+            if not ret.startswith(("http://", "https://")):
+                ret = f"https://{host}/"
+            page = injector.allow_site_html(host, ret, self.ctx.issue_token("allow-site", host))
+            # CORS ヘッダーは付けない（他のページがこの画面を読んでトークンを取り出せないように）
+            flow.response = http.Response.make(200, page.encode("utf-8"), {
+                "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store",
+                "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'",   # form-action はリダイレクト先まで制限するので付けない
+                "X-Frame-Options": "DENY"})
+            return
+        form = parse_qs(req.get_text(strict=False) or "")
+        host = form.get("host", [""])[0].lower()
+        ret = form.get("return", [""])[0]
+        mode = form.get("mode", [""])[0]
+        if (req.headers.get("origin", "") != MAGIC_ORIGIN
+                or not self.ctx.use_token(form.get("t", [""])[0], "allow-site", host)):
+            flow.response = http.Response.make(403, b"forbidden", {"Content-Type": "text/plain"})
+            return
+        if mode == "always":
+            wl = list(self.ctx.cfg.get("whitelist", []))
+            if host not in wl:
+                self.ctx.config.update({"whitelist": wl + [host]})
+        else:
+            self.ctx.allow_temporarily(host)
+        self.ctx.reqlog.add(reqlog.ALLOWED, f"https://{host}/", host, page=host,
+                            detail=t("log.site_allowed_always" if mode == "always" else "log.site_allowed_temp"))
+        if not (ret.startswith(("http://", "https://")) and (_host_of(ret) == host or _host_of(ret).endswith("." + host))):
+            ret = f"https://{host}/"
+        flow.response = http.Response.make(303, b"", {"Location": ret, "Cache-Control": "no-store"})
 
     _picker_times: list = []
 

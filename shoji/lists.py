@@ -12,6 +12,7 @@ from pathlib import Path
 from . import __version__
 from .config import DATA_DIR, LISTS_DIR, RULES_DIR
 from .context import AppContext
+from .i18n import t
 
 BUILTIN = [("builtin_ads.txt", "ad"), ("builtin_trackers.txt", "tracker")]
 # ユーザールールは書き込み可能な data 側に置く（exe 版ではインストール先が読み取り専用のため）。
@@ -93,9 +94,8 @@ def load_engine(ctx: AppContext) -> dict:
     summary["load_seconds"] = round(time.time() - t0, 2)
     summary["lists"] = len(sources)
     ctx.status["lists"] = summary
-    print(f"[lists] ルール読込: DNS {summary['dns_domains']:,} ドメイン / ネットワーク "
-          f"{summary['network_rules']:,} / 要素非表示 {summary['cosmetic_generic'] + summary['cosmetic_specific']:,}"
-          f" ({summary['load_seconds']}秒)")
+    print(t("msg.rules", dns=f"{summary['dns_domains']:,}", net=f"{summary['network_rules']:,}",
+            cos=f"{summary['cosmetic_generic'] + summary['cosmetic_specific']:,}", sec=summary["load_seconds"]))
     return summary
 
 
@@ -117,13 +117,13 @@ def download(entry: dict, timeout: int = 60) -> bool:
         except Exception as e:  # noqa: BLE001
             errors.append(f"{url.split('/')[2]}: {e}")
     if data is None:
-        print(f"[lists] {entry['name']} のダウンロードに失敗: " + " / ".join(errors))
+        print(t("msg.dl_fail", name=entry["name"], err=" / ".join(errors)))
         return False
     text = data.decode("utf-8", errors="replace")
     tmp = p.with_suffix(".tmp")
     tmp.write_text(text, encoding="utf-8")
     tmp.replace(p)
-    print(f"[lists] {entry['name']} を更新 ({len(data) // 1024:,} KB)")
+    print(t("msg.dl_ok", name=entry["name"], kb=f"{len(data) // 1024:,}"))
     return True
 
 
@@ -149,7 +149,7 @@ def start_updater(ctx: AppContext) -> threading.Thread:
             try:
                 update_lists(ctx)
             except Exception as e:  # noqa: BLE001
-                print(f"[lists] 更新エラー: {e}")
+                print(t("msg.update_err", err=e))
             time.sleep(3600)
     t = threading.Thread(target=loop, name="list-updater", daemon=True)
     t.start()

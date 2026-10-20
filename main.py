@@ -77,10 +77,10 @@ def run_watchdog(pid: int) -> None:
     time.sleep(1.5)
     if winsys.system_proxy_needs_restore():
         winsys.restore_system_proxy()
-        print("[watchdog] Shoji が異常終了したため、プロキシ設定を元に戻しました")
+        print(i18n.t("msg.wd_proxy"))
     if winsys.dns_was_set_by_us() and winsys.is_admin():
         winsys.reset_system_dns()
-        print("[watchdog] DNS 設定を元に戻しました")
+        print(i18n.t("msg.wd_dns"))
 
 
 def start_watchdog() -> None:
@@ -92,7 +92,7 @@ def start_watchdog() -> None:
                          close_fds=True, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
                          stderr=subprocess.DEVNULL)
     except OSError as e:
-        print(f"[watchdog] 起動できませんでした: {e}")
+        print(i18n.t("msg.wd_fail", err=e))
 
 
 # ---------------------------------------------------------------- 各部品
@@ -114,13 +114,13 @@ def ensure_cert(ctx: AppContext):
         return
     n = winsys.enable_firefox_windows_roots()
     if n:
-        print(f"[cert] Firefox（{n} プロファイル）に Windows の証明書を使う設定をしました（Firefox の再起動後に有効）")
+        print(i18n.t("msg.ff", n=n))
     if winsys.ca_cert_installed_fresh():
         ctx.cert_verified = True
         ctx.set_https_ready(True)
-        print("[cert] ルート証明書を確認しました。HTTPS フィルタリング有効")
+        print(i18n.t("msg.cert_ok"))
         return
-    print("[cert] ルート証明書が未インストールです。インストールの確認画面が出たら「はい」を押してください…")
+    print(i18n.t("msg.cert_ask"))
     ok, msg = winsys.install_ca_cert()
     if ok:
         ctx.cert_verified = True
@@ -129,8 +129,7 @@ def ensure_cert(ctx: AppContext):
     else:
         ctx.set_https_ready(False, "https.nocert")
         print("[cert] " + msg)
-        print("[cert] HTTPS フィルタリングは停止中です（広告ドメインのブロック・DNS フィルタは動作します）。"
-              "ダッシュボードの「セットアップ」から証明書をインストールできます。")
+        print(i18n.t("msg.cert_off"))
 
 
 async def run_proxy(ctx: AppContext, stop_event: asyncio.Event):
@@ -146,7 +145,7 @@ async def run_proxy(ctx: AppContext, stop_event: asyncio.Event):
         from mitmproxy import certs
         certs.CertStore.create_store(CERT_DIR, "mitmproxy", 2048, organization="Shoji",
                                      cn="Shoji Local Filtering CA (this PC only)")
-        print("[cert] この PC 専用のルート証明書を作成しました")
+        print(i18n.t("msg.cert_new"))
     opts = options.Options(listen_host=p["listen_host"], listen_port=int(p["listen_port"]),
                            confdir=str(CERT_DIR))
     master = DumpMaster(opts, with_termlog=False, with_dumper=False)
@@ -163,7 +162,7 @@ async def run_proxy(ctx: AppContext, stop_event: asyncio.Event):
     threading.Thread(target=ensure_cert, args=(ctx,), daemon=True).start()
     task = asyncio.create_task(master.run())
     ctx.status["proxy"] = "running"
-    print(f"[proxy] HTTPS フィルタリングプロキシ起動: {p['listen_host']}:{p['listen_port']}")
+    print(i18n.t("msg.proxy_up", addr=f"{p['listen_host']}:{p['listen_port']}"))
     await stop_event.wait()
     master.shutdown()
     try:
@@ -195,7 +194,7 @@ def main():
     print(f"=== Shoji v{__version__} ===")
     if not winsys.acquire_single_instance():
         # すでに起動している場合はダッシュボードを開くだけ
-        print("Shoji はすでに起動しています。ダッシュボードを開きます。")
+        print(i18n.t("msg.already"))
         if not args.autostart:
             port = Config().get()["dashboard"]["listen_port"]
             webbrowser.open(f"http://127.0.0.1:{port}/")
@@ -222,12 +221,11 @@ def main():
             dns = DnsFilter(ctx)
             addrs = dns.start()
             ctx.status["dns"] = "running"
-            print("[dns] DNS フィルタ起動: " + ", ".join(addrs))
+            print(i18n.t("msg.dns_up", addrs=", ".join(addrs)))
         except OSError as e:
             ctx.status["dns"] = "error"
             print(f"[dns] {e}")
-            print("[dns] ポート 53 が使用中の可能性があります（インターネット接続の共有 / Hyper-V 等）。"
-                  "config.json の dns.listen_port を変更するか --no-dns で起動してください。")
+            print(i18n.t("msg.dns_port"))
 
     from shoji.dashboard import DashboardServer, apply_system_proxy
     dash = DashboardServer(ctx)
@@ -238,12 +236,12 @@ def main():
     p = ctx.cfg["proxy"]
     if not args.no_proxy and not args.no_system_proxy and p.get("set_system_proxy", True):
         if winsys.system_proxy_needs_restore():
-            print("[system] 前回は設定を戻さずに終了していました（元の設定は保存済みです）")
+            print(i18n.t("msg.unclean"))
         start_watchdog()
         proxy_set = apply_system_proxy(ctx)
         if proxy_set:
-            mode = "自動構成スクリプト" if p.get("system_proxy_mode", "pac") == "pac" else "固定設定"
-            print(f"[system] Windows のプロキシ設定を Shoji に向けました（{mode}。終了時に元に戻します）")
+            mode = i18n.t("msg.pac") if p.get("system_proxy_mode", "pac") == "pac" else i18n.t("msg.static")
+            print(i18n.t("msg.proxy_set", mode=mode))
 
     exit_event = threading.Event()
     tray = None
@@ -262,9 +260,9 @@ def main():
         threading.Timer(1.5, lambda: webbrowser.open(url)).start()
 
     if tray:
-        print("タスクトレイの障子アイコンから、一時停止・ダッシュボード・終了ができます。")
+        print(i18n.t("msg.tray_hint"))
     else:
-        print("終了するには Ctrl+C を押してください。")
+        print(i18n.t("msg.ctrl_c"))
 
     def cleanup():
         stop_thread.set()
@@ -272,10 +270,10 @@ def main():
             tray.stop()
         if proxy_set:
             winsys.restore_system_proxy()
-            print("[system] プロキシ設定を元に戻しました")
+            print(i18n.t("msg.proxy_restored"))
         if winsys.dns_was_set_by_us() and winsys.is_admin():
             winsys.reset_system_dns()
-            print("[system] DNS 設定を元に戻しました")
+            print(i18n.t("msg.dns_restored"))
         if dns:
             dns.stop()
         stats.close()
@@ -302,9 +300,9 @@ def main():
         traceback.print_exc()
         failed = True
     finally:
-        print("終了処理中…")
+        print(i18n.t("msg.stopping"))
         cleanup()
-        print("終了しました。")
+        print(i18n.t("msg.stopped"))
     if failed:
         sys.exit(1)
 

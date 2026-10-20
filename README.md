@@ -45,7 +45,7 @@ Everything happens on your machine. Nothing is sent to any Shoji server, because
 | **AMP off** | Redirects Google AMP viewer/cache URLs and AMP pages to the publisher's normal page. |
 | **Dangerous sites & scams** | Warns before opening known malware, phishing and cryptomining sites (URLhaus, phishing and NoCoin lists), and defuses tech-support-scam pages that lock the screen with endless alerts, full screen and back-button traps. |
 | **Annoyances** | Optional AdGuard lists that hide cookie notices, in-page pop-ups, chat widgets, app banners and social buttons (off by default). |
-| **Element picker** | Press `Alt`+`Shift`+`H` on any page, click the thing you want gone, and Shoji saves a "hide this on this site" rule. |
+| **Element picker** | Press `Alt`+`Shift`+`H` on any page, click the thing you want gone, and Shoji saves a "hide this on this site" rule. The same panel has **"Turn Shoji off on this site"** for sites that break. |
 | **Filtering log** | A live list of recent requests and what Shoji did with each (blocked, passed, modified, not decrypted, page fixes), with the matching rule and one-click **Allow / Block** that writes a user rule. Kept in memory only. |
 | **Japanese / English** | The whole interface is available in both languages and follows the Windows display language by default. |
 | **Statistics** | Ads, trackers, pop-ups and video ads blocked; estimated data and time saved; top domains; hourly/daily charts; CSV export. |

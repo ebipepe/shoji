@@ -179,9 +179,9 @@ def blocked_frame_html() -> str:
             "<script>try{parent.postMessage({shoji:'collapse'},'*')}catch(e){}</script>")
 
 
-def blocked_page_html(url: str, host: str, category: str, rule: str) -> str:
+def blocked_page_html(url: str, host: str, category: str, rule: str, token: str = "") -> str:
     import html as _h
-    allow = f"{MAGIC_ORIGIN}/allow?url=" + _url_quote(url)
+    allow = f"{MAGIC_ORIGIN}/allow?url=" + _url_quote(url) + "&t=" + _url_quote(token)
     danger = category == "security"
     h = _h.escape(host)
     if danger:
@@ -228,6 +228,35 @@ a.sub{{font-size:12.5px;color:var(--mut)}}
 <a class="btn{' sub' if danger else ''}" href="{_h.escape(allow)}">{_h.escape(allow_label)}</a></div>
 <p style="font-size:12px;margin-top:18px">Shoji</p></div>
 {auto_close}</body></html>"""
+
+
+def allow_site_html(host: str, return_url: str, token: str) -> str:
+    """「このサイトでは止める」の確認画面。ボタンは Shoji の画面の中にしかないので、ページが勝手に押せない"""
+    import html as _h
+    e = _h.escape
+    return f"""<!doctype html><html lang="{lang()}"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>{e(t("site.title", host=host))}</title>
+<style>
+:root{{color-scheme:light dark;--bg:#f6f7f9;--fg:#1d2330;--mut:#667085;--card:#fff;--acc:#2f6fed;--bd:#e3e6ec}}
+@media (prefers-color-scheme:dark){{:root{{--bg:#12151b;--fg:#e8eaee;--mut:#98a2b3;--card:#1b2029;--bd:#2a313d}}}}
+body{{margin:0;font:15px/1.7 system-ui,"Segoe UI","Hiragino Sans","Yu Gothic UI",sans-serif;background:var(--bg);color:var(--fg);display:grid;place-items:center;min-height:100vh}}
+.c{{background:var(--card);border:1px solid var(--bd);border-top:4px solid var(--acc);border-radius:14px;padding:28px 32px;max-width:560px;margin:16px}}
+h1{{font-size:20px;margin:0 0 10px;word-break:break-all}} p{{color:var(--mut);margin:8px 0}}
+form{{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}}
+button,a.btn{{font:inherit;padding:8px 16px;border-radius:8px;border:1px solid var(--bd);background:var(--card);color:var(--fg);cursor:pointer;text-decoration:none}}
+button.pri{{background:var(--acc);border-color:var(--acc);color:#fff}}
+</style></head><body><div class="c">
+<h1>{e(t("site.title", host=host))}</h1>
+<p>{e(t("site.desc"))}</p>
+<p>{e(t("site.note"))}</p>
+<form method="post" action="{MAGIC_ORIGIN}/allow-site">
+<input type="hidden" name="host" value="{e(host)}"><input type="hidden" name="return" value="{e(return_url)}">
+<input type="hidden" name="t" value="{e(token)}">
+<button class="pri" name="mode" value="temp">{e(t("site.temp"))}</button>
+<button name="mode" value="always">{e(t("site.always"))}</button>
+<a class="btn" href="{e(return_url)}">{e(t("site.cancel"))}</a>
+</form>
+<p style="font-size:12px;margin-top:18px">Shoji</p></div></body></html>"""
 
 
 def _url_quote(u: str) -> str:

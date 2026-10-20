@@ -76,7 +76,7 @@ class Tray:
         try:
             import pystray
         except ImportError:
-            print("[tray] pystray が見つからないため、タスクトレイには表示しません（pip install pystray pillow）")
+            print(t("msg.no_tray"))
             return False
         self.icon = pystray.Icon("Shoji", _load_icon(self.ctx.paused), t("tray.title"), menu=self._menu())
         self.ctx.on_pause_change.append(lambda _p: self.refresh())

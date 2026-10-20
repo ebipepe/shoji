@@ -4,6 +4,23 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+- "Turn Shoji off on this site": a link in the element picker panel (`Alt`+`Shift`+`H`) opens a Shoji
+  confirmation page where you can turn filtering off on the current site for an hour or always (adds it to
+  the allowlist). Dangerous-site blocking still applies to third-party requests on allowlisted sites.
+- The log file (`shoji.log`) and console messages now follow the display language too.
+
+### Security
+- The "open anyway" link on block pages and the new site-off page now require a one-time token issued by
+  Shoji's own page, so other web pages can no longer allow themselves or other hosts by calling
+  `https://shoji.blocker/...` directly.
+
+### Changed
+- Pages that Shoji modified are sent with `Cache-Control: no-store`, so turning a site off or changing rules
+  is not hidden by a cached, already-filtered copy.
+
 ## [0.4.0] - 2026-10-20
 
 ### Added

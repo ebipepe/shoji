@@ -251,6 +251,28 @@ def test_i18n():
     json.dumps(sorted(ja))
 
 
+def test_tokens_for_allow_pages():
+    import tempfile
+    from unittest import mock
+    from shoji.config import Config
+    from shoji.context import AppContext
+    from shoji.filters import FilterEngine
+    from shoji.injector import allow_site_html, blocked_page_html
+    with tempfile.TemporaryDirectory() as d:
+        ctx = AppContext(Config(Path(d) / "c.json"), mock.MagicMock(), FilterEngine())
+        tok = ctx.issue_token("allow-site", "example.com")
+        assert not ctx.use_token(tok, "allow", "example.com")            # 用途が違う
+        tok = ctx.issue_token("allow-site", "example.com")
+        assert not ctx.use_token(tok, "allow-site", "evil.com")          # サイトが違う
+        tok = ctx.issue_token("allow-site", "example.com")
+        assert ctx.use_token(tok, "allow-site", "example.com")
+        assert not ctx.use_token(tok, "allow-site", "example.com")       # 使い捨て
+        assert not ctx.use_token("", "allow", "example.com")
+    assert "&amp;t=abc" in blocked_page_html("https://ads.example/", "ads.example", "ad", "r", "abc")
+    page = allow_site_html("example.com", "https://example.com/a?b=<x>", "tok123")
+    assert 'value="tok123"' in page and "<x>" not in page
+
+
 if __name__ == "__main__":
     for name, fn in list(globals().items()):
         if name.startswith("test_"):
