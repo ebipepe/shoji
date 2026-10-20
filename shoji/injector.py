@@ -43,6 +43,7 @@ def _utf16(c: str):
 _CONTENT_JS = _strip_comments((ASSETS_DIR / "content.js").read_text(encoding="utf-8"))
 _PICKER_JS = _strip_comments((ASSETS_DIR / "picker.js").read_text(encoding="utf-8"))
 _GUARD_JS = _strip_comments((ASSETS_DIR / "guard.js").read_text(encoding="utf-8"))
+_PROC_JS = _strip_comments((ASSETS_DIR / "procedural.js").read_text(encoding="utf-8"))
 _PLACEHOLDER = "window.__SHOJI_CFG__"
 _MAGIC_PLACEHOLDER = "window.__SHOJI_MAGIC__"
 
@@ -57,7 +58,8 @@ def _sha256(s: str) -> str:
 
 
 def build_snippet(cfg: dict, specific: list[str], exceptions: list[str], generic_inline: list[str],
-                  use_generic: bool, version: str, scriptlet_js: str = "") -> tuple[str, str, str]:
+                  use_generic: bool, version: str, scriptlet_js: str = "",
+                  procedural: list | None = None, extra_css: list[str] | None = None) -> tuple[str, str, str]:
     """(埋め込む HTML, script の CSP ハッシュ, style の CSP ハッシュ)"""
     parts = []
     if use_generic:
@@ -68,6 +70,9 @@ def build_snippet(cfg: dict, specific: list[str], exceptions: list[str], generic
     if exceptions:
         # サイト別の例外 (#@#) — 汎用ルールで隠れた要素を元に戻す
         css += "\n" + ",".join(exceptions) + "{display:revert!important}"
+    if extra_css:
+        # 拡張 CSS のうち、そのまま CSS にできるもの（:style() / #$#）。1 つずつ分けて、不正な 1 件で全体が無効にならないようにする
+        css += "\n" + "\n".join(extra_css)
     # <style> は空でも必ず置く（後から CSSOM で汎用ルールを追加するため。CSSOM は CSP の制限を受けない）
     css = css_ascii(css.replace("</", "<\\/"))
     style_hash = _sha256(css)
@@ -76,7 +81,13 @@ def build_snippet(cfg: dict, specific: list[str], exceptions: list[str], generic
     cfg_json = cfg_json.replace("<", "\\u003c").replace("\u2028", "\\u2028").replace("\u2029", "\\u2029")
     # スクリプトレットはページのスクリプトより先に動く必要があるため、同じ <script> の先頭に置く
     # 詐欺ページ対策はページのスクリプトより先に alert 等を見張る必要があるため、最初に置く
+    proc_js = ""
+    if procedural:
+        proc_json = json.dumps({"magic": MAGIC_ORIGIN, "proc": procedural}, ensure_ascii=False, separators=(",", ":"))
+        proc_json = proc_json.replace("<", "\\u003c").replace("\u2028", "\\u2028").replace("\u2029", "\\u2029")
+        proc_js = _PROC_JS.replace(_PLACEHOLDER, proc_json)
     js = js_ascii(_GUARD_JS.replace(_PLACEHOLDER, cfg_json) + scriptlet_js + _CONTENT_JS.replace(_PLACEHOLDER, cfg_json)
+                  + proc_js
                   + _PICKER_JS.replace(_MAGIC_PLACEHOLDER, json.dumps({"magic": MAGIC_ORIGIN, "lang": cfg.get("lang", "ja"), "keys": cfg.get("keys") or {}})))
     script_hash = _sha256(js)
     parts.append(f"<script>{js}</script>")

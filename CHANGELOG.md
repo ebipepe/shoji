@@ -6,6 +6,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+- Extended CSS (procedural cosmetic filters) for site-specific rules: `:has-text()` / `:contains()`, `:has()` /
+  `:not()` with procedural arguments, `:upward()` / `:nth-ancestor()`, `:xpath()`, `:matches-css()` (incl. `before`
+  / `after`), `:min-text-length()`, `:matches-attr()`, `:matches-path()`, `:watch-attr()`, and the actions
+  `:remove()`, `:style()`, `:remove-attr()`, `:remove-class()`. AdGuard `#?#`, `#$#` (CSS injection, incl.
+  `remove: true`) and `[-ext-…]` syntax and Adblock Plus `:-abp-has()` / `:-abp-contains()` / `:-abp-properties()`
+  are understood too. About 2,000 rules in the default lists that used to be skipped now work.
+- `$redirect` and `$redirect-rule`: blocked requests can be answered with a harmless stand-in (empty script, text,
+  transparent image, silent audio/video, empty VAST/VMAP, or stand-ins for Google Analytics, Tag Manager,
+  AdSense, Google Publisher Tag, the IMA video-ad SDK, FingerprintJS, FuckAdBlock, Amazon apstag and others).
+  The most common Google ad/analytics scripts get a stand-in automatically when blocked, even without a
+  `$redirect` rule. Blocked images are answered with a transparent image instead of an error.
+
+### Fixed
+- `@@…$redirect` exception rules no longer allow the request; they only turn off the stand-in.
+  `$redirect-rule` filters no longer block on their own.
+
 ## [0.4.1] - 2026-10-20
 
 ### Added

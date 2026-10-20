@@ -38,6 +38,8 @@ Everything happens on your machine. Nothing is sent to any Shoji server, because
 | **App ads** | A built-in DNS server (DNS-over-HTTPS upstream) blocks ad and tracker domains for every app, and for phones on your LAN if you point them at it. |
 | **Cosmetic filtering** | Hides ad slots with ~56k element-hiding rules, then **collapses the empty space** they leave behind. |
 | **Scriptlets** | Runs uBlock Origin-style `##+js(...)` rules (≈3k in the default lists) to defuse anti-adblock walls and ad scripts: `set-constant`, `abort-on-property-read`, `json-prune`, `no-fetch-if`, `no-setTimeout-if`, `remove-attr` and about 25 more. Shoji's own implementation, no uBO code. |
+| **Extended CSS** | Site-specific rules that plain CSS can't express: `:has-text()`, `:upward()`, `:xpath()`, `:matches-css()`, `:remove()`, `:style()` and more, plus AdGuard `#?#` / `#$#` and Adblock Plus `:-abp-has()` syntax (≈2k rules in the default lists). |
+| **Script stand-ins** | When an ad or analytics script is blocked, Shoji can return a harmless stand-in instead (`$redirect`), so pages that call Google Analytics, Tag Manager, AdSense, GPT or the IMA video-ad SDK keep working. Shoji's own implementations. |
 | **Re-inserted ads** | A MutationObserver removes ads that scripts insert or force back into view. |
 | **Pop-ups** | Blocks pop-ups and pop-unders opened without a real click, script-generated new-tab tricks, and invisible click-hijacking overlays. |
 | **Affiliate banners** | Optionally hides banner images that a site hosts itself and wraps in affiliate links (`rel="sponsored"`, Amazon, Rakuten, A8, …). |
@@ -118,8 +120,8 @@ your phone's Wi-Fi DNS to your PC's IP address. For HTTPS filtering as well, set
 - **YouTube's official mobile/TV apps** pin their certificates and serve ads from the same servers as
   videos, so neither DNS nor the proxy can remove those ads. YouTube in a browser is supported.
 - Video sites that stitch ads into the video stream server-side (SSAI) can't be filtered.
-- uBlock Origin scriptlets (`##+js(...)`) and some procedural cosmetic filters (`:has-text`, …) are not supported yet
-  and are skipped when lists are loaded.
+- A few rarely used rule types are skipped when lists are loaded: HTML filters (`##^`), AdGuard JavaScript rules (`#%#`),
+  `:others()` and procedural rules meant for every site.
 - Data/time-saved figures are **estimates** based on typical sizes of the blocked resource types.
 - The filter engine is pure Python. It is fast enough for normal browsing (typically well under 1 ms per request),
   but slower than native blockers.

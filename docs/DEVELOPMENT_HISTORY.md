@@ -164,6 +164,19 @@ Shoji（旧名 `koukoku_blocker`）の各ファイルの目的・設計思想と
   - 許可リストのサイトに埋め込まれた他サイトの通信でも、危険サイトだけはブロックを続ける。
   - 加工したページを `no-store` で返すようにした。ブラウザに保存された「加工済みのページ」が使われて、サイトを止めても表示が変わらなかったため。
 - **ログの英語化**: shoji.log とコンソールのメッセージも表示言語に合わせるようにした。
+- v0.4.1 を公開（上の変更をまとめたもの）。
+
+### v0.5 開発中 — 拡張 CSS とスクリプトの代替品（2026-10-20）
+- **拡張 CSS（手続き型の要素非表示）**: 標準のリストに約 2,000 件ありながら読み飛ばしていた `:has-text()`・`:upward()`・`:xpath()`・`:remove()`・`:style()` などのルールに対応した。
+  - Python 側（`shoji/procedural.py`）がルールを「手順」（JSON）に変換し、ページ内のスクリプト（`assets/procedural.js`）が実行する。ページの変化に合わせて、間引きながら再実行する。
+  - AdGuard の `#?#`・`#$#`（CSS の差し込み）・`[-ext-…]`、Adblock Plus の `:-abp-has()` なども同じ手順に変換する。操作の無い `:style()` / `#$#` は、スクリプトを使わず CSS として差し込む。
+  - ブラウザの CSS で書けるもの（`:has()` や `:not()` の中身がふつうの CSS）はブラウザに任せる。ただし `:has()` の中の `:has()` は CSS では無効なので手順にする。
+  - 全サイト向けの手続き型ルールは、ページを重くするので使わない（uBlock Origin と同じ扱い）。
+  - 標準のリストの全 2,554 手順を Chromium で読み込み、正規表現・セレクタとして有効なことを確かめた。
+- **$redirect（スクリプトの代替品）**: 広告・計測のスクリプトをブロックしたとき、何もしない代替品を返す。ページ側の `ga()` や `googletag.cmd.push()` が動かずにボタンや動画が止まる、という不具合を防ぐ。
+  - Google アナリティクス・タグマネージャー・AdSense・GPT・IMA SDK・FingerprintJS・FuckAdBlock・Amazon apstag などの代替品を Shoji 独自に書いた（uBlock Origin・AdGuard の代替品は GPL なので使わない）。無音の MP3・MP4 は FFmpeg で作成。
+  - リストに `$redirect` が無くても、よく使われる Google の広告・計測スクリプトは自動で代替品を返す。ブロックした画像には透明な画像を返す（壊れた画像のアイコンを出さない）。
+  - 不具合の修正: `@@…$redirect`（代替品を使わない、という意味）を通信の許可として扱っていた。`$redirect-rule`（他のルールでブロックされたときだけ代替品を使う）を単独のブロックとして扱っていた。
 
 ---
 
@@ -210,6 +223,11 @@ Shoji（旧名 `koukoku_blocker`）の各ファイルの目的・設計思想と
 | `shoji/i18n.py` | 10/20 | v0.4 | Python 側の文言（日本語 / 英語）と言語の判定 |
 | `shoji/assets/i18n.js` | 10/20 | v0.4 | ダッシュボードの文言（日本語 / 英語） |
 | `shoji/assets/guard.js` | 10/20 | v0.4 | サポート詐欺（ブラウザロッカー）対策 |
+| `shoji/procedural.py` | 10/20 | v0.5 | 拡張 CSS のルールを「手順」に変換する |
+| `shoji/assets/procedural.js` | 10/20 | v0.5 | 拡張 CSS の手順をページ内で実行する |
+| `shoji/redirects.py` | 10/20 | v0.5 | $redirect の代替品の名前と中身 |
+| `shoji/assets/redirects/` | 10/20 | v0.5 | 代替品のスクリプト・無音の音声と動画（Shoji 独自） |
+| `tests/test_procedural_browser.py` | 10/20 | v0.5 | 拡張 CSS と代替品のブラウザ試験 |
 | `tests/test_guard_browser.py` | 10/20 | v0.4 | 詐欺ページ対策のブラウザ試験 |
 | `shoji/assets/picker.js` | 10/19 | v0.4 | 要素の選択ブロック（Ctrl+Shift+Alt+H） |
 | `shoji/reqlog.py` | 10/18 | v0.3 | フィルタリングログ（メモリ上のみ） |

@@ -112,6 +112,8 @@ MESSAGES: dict[str, dict[str, str]] = {
     "log.picker": {"ja": "要素の選択ブロックでルールを追加", "en": "Rule added with the element picker"},
     "log.dns": {"ja": "DNS で名前解決をブロック", "en": "Blocked at DNS"},
     "log.cname": {"ja": "CNAME で偽装したトラッカー（実体は {target}）", "en": "CNAME-cloaked tracker (really {target})"},
+    "log.redirect": {"ja": "代替品を返した: {name}", "en": "Served a stand-in: {name}"},
+    "log.page.procedural": {"ja": "拡張 CSS {n} 件", "en": "{n} extended CSS rules"},
     "log.conn_error": {"ja": "接続エラー", "en": "Connection error"},
     "pt.paused": {"ja": "一時停止中", "en": "Paused"},
     "pt.off": {"ja": "HTTPS フィルタリングがオフ", "en": "HTTPS filtering is off"},

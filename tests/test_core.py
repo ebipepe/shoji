@@ -283,6 +283,80 @@ def test_shortcuts():
     assert DEFAULT_CONFIG["app"]["shortcuts"] == {"picker": "Ctrl+Shift+Alt+H", "site_off": "Ctrl+Shift+Alt+P"}
 
 
+def test_procedural_parse():
+    from shoji import procedural as P
+    assert P.parse("div.ad:has-text(広告)") == {"s": "div.ad", "o": [["text", ["広告", ""]]]}
+    t = P.parse("li:not(:has-text(news))")
+    assert t["o"][0][0] == "not" and t["o"][0][1] == {"s": None, "o": [["text", ["news", ""]]]}
+    assert P.parse("a > :has-text(x)")["s"] == "a >*"
+    assert P.parse(":xpath(//div)")["s"] is None
+    assert P.parse(".x:has-text(a):remove()")["a"] == ["remove"]
+    assert P.parse(":matches-path(/a) .ad:upward(2)") == {"s": ".ad", "o": [["up", 2]], "p": ["\\/a", ""]}
+    assert P.parse("div[-ext-has='.x']")["s"] == "div:has(.x)"
+    # ブラウザの CSS で書けるものは手続き型にしない
+    assert not P.is_procedural("div:has(> .a):not(.b)")
+    assert P.is_procedural("div:has(.a:has(.b))")
+    for bad in ("div:others()", ".a:style(background: url(x))", ".a:remove():has-text(x)", "div:nth-ancestor(a)"):
+        try:
+            P.parse(bad)
+        except P.Unsupported:
+            continue
+        raise AssertionError(bad)
+    assert P.plain_css_rule(P.parse("body:style(overflow: auto !important)")) == "body{overflow:auto!important}"
+    sel, task = P.parse_css_injection("#top { remove: true; }")
+    assert task == {"s": "#top", "o": [], "a": ["remove"]}
+
+
+def test_procedural_engine():
+    from shoji.filters import FilterEngine
+    e = FilterEngine()
+    e.load([("t", "\n".join([
+        "example.com##div:has-text(PR)",
+        "example.com#?#div:-abp-contains(PR)",          # 同じ手順になるので 1 件にまとまる
+        "example.com,~sub.example.com##.x:upward(1)",
+        "example.com#$#body { overflow: auto !important; }",
+        "other.com##p:has-text(a)",
+        "other.com#@#p:has-text(a)",
+        "##div:has-text(generic)",                        # 全サイト向けは使わない
+        "example.com#%#window.x=1",                        # AdGuard の JS ルールは使わない
+    ]), "ad")])
+    tasks, css = e.procedural_for("www.example.com")
+    assert len(tasks) == 2 and css == ["body{overflow:auto!important}"], (tasks, css)
+    assert len(e.procedural_for("sub.example.com")[0]) == 1
+    assert e.procedural_for("other.com") == ([], [])
+    assert e.counts["cosmetic_unsupported"] == 2
+
+
+def test_redirects():
+    from shoji import redirects
+    from shoji.filters import FilterEngine
+    e = FilterEngine()
+    e.load([("t", "\n".join([
+        "||ads.example/lib.js$script,redirect=noopjs",
+        "||cdn.example/track.js$script,redirect-rule=googletagmanager_gtm.js",
+        "||cdn.example^$script,redirect-rule=noopjs:5",
+        "@@||ads.example/lib.js$redirect=noopjs,domain=keep.example",
+    ]), "ad")])
+    u = "https://ads.example/lib.js"
+    assert e.match_url(u, "ads.example", "site.example", "script") is not None
+    assert e.redirect_for(u, "ads.example", "site.example", "script") == "noopjs"
+    # @@...$redirect は代替品を使わないだけで、ブロックは続く
+    assert e.match_url(u, "ads.example", "keep.example", "script") is not None
+    assert e.redirect_for(u, "ads.example", "keep.example", "script") is None
+    # $redirect-rule は単独ではブロックしない。優先度の高い方を使う
+    u2 = "https://cdn.example/track.js"
+    assert e.match_url(u2, "cdn.example", "site.example", "script") is None
+    assert e.redirect_for(u2, "cdn.example", "site.example", "script") == "noopjs"
+    for name in ("noopjs", "1x1.gif", "2x2.png", "noopmp3-0.1s", "noopmp4-1s", "google-ima.js",
+                 "googletagservices_gpt.js", "abp-resource:blank-js", "noopvast-4.0"):
+        assert redirects.get(name), name
+    assert redirects.get("click2load.html") is None
+    assert redirects.builtin_for("https://www.googletagmanager.com/gtag/js?id=G-1", "script") == "googletagmanager.js"
+    assert redirects.builtin_for("https://www.googletagmanager.com/gtag/js?id=G-1", "image") is None
+    png = redirects.get("32x32.png")[1]
+    assert png.startswith(b"\x89PNG") and png[16:24] == b"\x00\x00\x00\x20\x00\x00\x00\x20"
+
+
 if __name__ == "__main__":
     for name, fn in list(globals().items()):
         if name.startswith("test_"):

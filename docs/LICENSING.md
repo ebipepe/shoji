@@ -75,6 +75,12 @@ Origin's and AdGuard's own scriptlet code is GPL-3.0, so Shoji does **not** reus
 the documented behaviour of each scriptlet (name and arguments), under Apache-2.0. Please keep it that way —
 don't paste code from those projects into it.
 
+The same applies to the **extended CSS engine** ([`shoji/procedural.py`](../shoji/procedural.py),
+[`shoji/assets/procedural.js`](../shoji/assets/procedural.js)) and the **`$redirect` stand-ins**
+([`shoji/assets/redirects/`](../shoji/assets/redirects/)): they are written from the documented filter syntax and
+the public APIs of the libraries they stand in for, not from uBlock Origin's or AdGuard's resources. The tiny
+silent MP3/MP4 files were generated for this project with FFmpeg.
+
 ---
 
 ## 日本語の要約

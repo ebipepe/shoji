@@ -22,7 +22,7 @@ from urllib.parse import parse_qs, urlsplit
 from mitmproxy import http, tls
 from mitmproxy.net.http.headers import infer_content_encoding
 
-from . import injector, lists, reqlog, scriptlets, winsys, youtube
+from . import injector, lists, redirects, reqlog, scriptlets, winsys, youtube
 from .config import BUILTIN_HTTPS_EXCLUSIONS, CERT_DIR, DEFAULT_SHORTCUTS, is_whitelisted
 from .context import AppContext
 from .i18n import lang, t
@@ -45,8 +45,6 @@ _EXT_MAP = [
     (re.compile(r"\.(mp4|webm|m3u8|ts|m4s|mp3|aac|vtt|mpd)(\?|$)", re.I), "media"),
     (re.compile(r"\.(woff2?|ttf|otf)(\?|$)", re.I), "font"),
 ]
-_GIF_1x1 = (b"GIF89a\x01\x00\x01\x00\x80\x00\x00\x00\x00\x00\x00\x00\x00!\xf9\x04\x01\x00\x00\x00\x00,"
-            b"\x00\x00\x00\x00\x01\x00\x01\x00\x00\x02\x02D\x01\x00;")
 _PAGE_REPORT_KINDS = {"popup": "document", "cosmetic": None, "reinserted": None, "amp": None,
                       "youtube": None, "stealth_param": None, "security": "document"}
 
@@ -298,8 +296,10 @@ class ShojiAddon:
             if rule:
                 cat = self.engine.categorize(host, rule.category)
                 if _should_block(cat, F):
-                    _log(reqlog.BLOCKED, rule=rule.raw, cat=cat)
-                    return self._block(flow, rule, cat, rtype, host, url)
+                    redir = self._redirect_name(url, host, page_host, rtype)
+                    _log(reqlog.BLOCKED, rule=rule.raw, cat=cat,
+                         detail=t("log.redirect", name=redir) if redir else "")
+                    return self._block(flow, rule, cat, rtype, host, url, redir)
 
         if S["enabled"]:
             self._stealth_request(flow, host, page_host, rtype, S)
@@ -310,14 +310,26 @@ class ShojiAddon:
                     del req.headers[name]
         _log(reqlog.MODIFIED if meta["notes"] else reqlog.PASSED, detail=" / ".join(meta["notes"]))
 
-    def _block(self, flow, rule, cat, rtype, host, url):
+    def _redirect_name(self, url, host, page_host, rtype) -> str:
+        """ブロックした通信に返す代替品の名前（無ければ ""）"""
+        if rtype == "document":
+            return ""
+        name = self.engine.redirect_for(url, host, page_host, rtype)
+        if name and redirects.get(name):
+            return redirects.canonical(name) or name
+        return redirects.builtin_for(url, rtype) or ""
+
+    def _block(self, flow, rule, cat, rtype, host, url, redir=""):
         stats = self.ctx.stats
         stats.record(cat, "proxy", host, rtype, detail=rule.raw)
         if cat == "ad" and (youtube.is_youtube_host(host)
                             or youtube.is_youtube_host(flow.metadata["kk"]["page_host"] or "")):
             stats.record("youtube", "proxy", host, rtype, count_bytes=False, detail=url[:200])
-        redirect = (rule.redirect or "").lower()
-        if rtype == "document":
+        res = redirects.get(redir) if redir else None
+        if res and rtype != "document":
+            ctype, body = res
+            self._respond(flow, 200, body, ctype, {"X-Shoji": "redirect"})
+        elif rtype == "document":
             self._respond(flow, 200, injector.blocked_page_html(url, host, cat, rule.raw,
                                                                 self.ctx.issue_token("allow", host)),
                           "text/html; charset=utf-8")
@@ -327,8 +339,9 @@ class ShojiAddon:
             self._respond(flow, 200, b"/* blocked by Shoji */", "application/javascript")
         elif rtype == "stylesheet":
             self._respond(flow, 200, b"", "text/css")
-        elif rtype == "image" and ("gif" in redirect or "png" in redirect):
-            self._respond(flow, 200, _GIF_1x1, "image/gif")
+        elif rtype == "image":
+            # 壊れた画像のアイコンが出ないよう、透明な画像を返す
+            self._respond(flow, 200, redirects.GIF_1x1, "image/gif")
         elif rtype == "ping":
             self._respond(flow, 204, b"", "text/plain")
         else:
@@ -484,11 +497,12 @@ class ShojiAddon:
                 "lang": lang(),
                 "keys": {**DEFAULT_SHORTCUTS, **((cfg.get("app") or {}).get("shortcuts") or {})},
             }
+            proc_tasks, proc_css = self.engine.procedural_for(host) if use_specific else ([], [])
             calls = (self.engine.scriptlets_for(host)
                      if F.get("scriptlets", True) and "elemhide" not in flags else [])
             snippet, sh, csh = injector.build_snippet(page_cfg, specific, exceptions, generic_inline,
                                                       use_generic, self.ctx.rules_version,
-                                                      scriptlets.build(calls))
+                                                      scriptlets.build(calls), proc_tasks, proc_css)
             text = injector.inject(text, snippet)
             modified = True
             parts = []
@@ -496,6 +510,8 @@ class ShojiAddon:
                 parts.append(t("log.page.specific", n=len(specific)))
             if generic_inline:
                 parts.append(t("log.page.generic", n=len(generic_inline)))
+            if proc_tasks or proc_css:
+                parts.append(t("log.page.procedural", n=len(proc_tasks) + len(proc_css)))
             if calls:
                 names = list(dict.fromkeys(n for n, _ in calls))
                 parts.append(t("log.page.scriptlets", n=len(calls),

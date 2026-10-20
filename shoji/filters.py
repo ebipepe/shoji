@@ -19,7 +19,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Iterable, Optional
 
-from . import scriptlets
+from . import procedural, scriptlets
 
 # --------------------------------------------------------------------------
 # ドメインユーティリティ
@@ -132,7 +132,9 @@ class NetRule:
     domains: tuple = ()                     # $domain= 含める
     not_domains: tuple = ()
     removeparam: Optional[str] = None       # $removeparam の値（"" は全パラメーター）
-    redirect: Optional[str] = None
+    redirect: Optional[str] = None          # 代替品の名前（$redirect / $redirect-rule）
+    redirect_only: bool = False             # $redirect-rule: 他のルールでブロックされたときだけ使う
+    redirect_prio: int = 0
     doc_flags: frozenset = frozenset()      # 例外ルールの document/elemhide/generichide
     _regex: Optional[re.Pattern] = field(default=None, repr=False)
     _bad: bool = False
@@ -346,6 +348,12 @@ class FilterEngine:
         # スクリプトレット: ドメイン（"" は全サイト） -> [(名前, 引数, 除外ドメイン)]
         self.scriptlets: dict[str, list] = defaultdict(list)
         self.scriptlet_exc: dict[str, set[str]] = defaultdict(set)   # ドメイン -> {key} （"" は全部無効）
+        # 拡張 CSS（手続き型の要素非表示）: ドメイン -> [(key, 手順, 除外ドメイン)]
+        self.proc: dict[str, list] = defaultdict(list)
+        self.proc_exc: dict[str, set[str]] = defaultdict(set)        # ドメイン（"" は全サイト） -> {key}
+        # $redirect / $redirect-rule（ブロックしたときに返す代替品）
+        self.redirect_rules: list[NetRule] = []
+        self.redirect_exc: list[NetRule] = []
 
     # ------------------------------------------------------------ 読み込み
     def load(self, sources: list[tuple[str, str, str]]) -> None:
@@ -402,13 +410,19 @@ class FilterEngine:
         if sep in ("##", "#@#") and body.startswith("+js("):
             self._parse_scriptlet(domains, sep == "#@#", body)
             return
-        if sep not in ("##", "#@#"):
-            self.counts["cosmetic_unsupported"] += 1  # スクリプトレット / HTML フィルタ等
+        if sep in ("#$#", "#@$#", "#$?#", "#@$?#"):
+            self._parse_procedural(domains, "@" in sep, body, injection=True)
             return
-        if body.startswith("+js(") or _PROCEDURAL.search(body) or body.startswith("^"):
+        if sep not in ("##", "#@#", "#?#", "#@?#"):
+            self.counts["cosmetic_unsupported"] += 1  # AdGuard の JS ルール / HTML フィルタ等
+            return
+        if body.startswith("+js(") or body.startswith("^"):
             self.counts["cosmetic_unsupported"] += 1
             return
-        exc = sep == "#@#"
+        if _PROCEDURAL.search(body) and procedural.is_procedural(body):
+            self._parse_procedural(domains, "@" in sep, body)
+            return
+        exc = "@" in sep
         doms = [d.strip().lower() for d in domains.split(",") if d.strip()]
         if not doms:
             (self.generic_hide_exc if exc else self.generic_hide).add(body)
@@ -421,6 +435,31 @@ class FilterEngine:
             for d in include:
                 (self.specific_exc if exc else self.specific_hide)[d].add(body)
         self.counts["cosmetic"] += 1
+
+    def _parse_procedural(self, domains: str, exc: bool, body: str, injection: bool = False):
+        try:
+            if injection:
+                _sel, task = procedural.parse_css_injection(body)
+            else:
+                task = procedural.parse(body)
+        except procedural.Unsupported:
+            self.counts["cosmetic_unsupported"] += 1
+            return
+        key = json.dumps(task, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+        doms = [d.strip().lower() for d in domains.split(",") if d.strip()]
+        include = [d for d in doms if not d.startswith("~")]
+        exclude = tuple(d[1:] for d in doms if d.startswith("~"))
+        if exc:
+            for d in include or [""]:
+                self.proc_exc[d].add(key)
+            return
+        if not include:
+            # 全サイト向けの手続き型ルールはページを重くするので使わない（uBlock Origin と同じ扱い）
+            self.counts["cosmetic_unsupported"] += 1
+            return
+        for d in include:
+            self.proc[d].append((key, task, exclude))
+        self.counts["procedural"] += 1
 
     def _parse_scriptlet(self, domains: str, exc: bool, body: str):
         parsed = scriptlets.parse(body)
@@ -481,7 +520,13 @@ class FilterEngine:
             elif key in ("removeparam", "queryprune"):
                 rule.removeparam = val
             elif key in ("redirect", "redirect-rule"):
-                rule.redirect = val
+                name, _, prio = val.partition(":")
+                rule.redirect = name.strip().lower()
+                rule.redirect_only = key == "redirect-rule"
+                try:
+                    rule.redirect_prio = int(prio) if prio else 0
+                except ValueError:
+                    rule.redirect_prio = 0
             elif key in ("document", "doc") and exception:
                 flags.add("document")
             elif key in ("elemhide", "ehide") and exception:
@@ -499,6 +544,15 @@ class FilterEngine:
                 self.counts["network_unsupported"] += 1
                 return
         rule.types, rule.not_types, rule.doc_flags = frozenset(types), frozenset(not_types), frozenset(flags)
+        if rule.redirect is not None:
+            if exception:
+                # @@...$redirect は「代替品を使わない」という意味で、通信の許可ではない
+                self.redirect_exc.append(rule)
+                return
+            self.redirect_rules.append(rule)
+            self.counts["redirect"] += 1
+            if rule.redirect_only:
+                return
 
         # DNS 用ドメインルール
         if not is_regex:
@@ -524,6 +578,7 @@ class FilterEngine:
         # badfilter
         if self._badfilters:
             pending = [r for r in pending if r.raw not in self._badfilters]
+            self.redirect_rules = [r for r in self.redirect_rules if r.raw not in self._badfilters]
             self.dns_block = {d: c for d, c in self.dns_block.items()
                               if f"||{d}^" not in self._badfilters}
         # トークン頻度
@@ -684,6 +739,22 @@ class FilterEngine:
                     return None
             return block
 
+    def redirect_for(self, url: str, host: str, page_host: str, rtype: str) -> Optional[str]:
+        """ブロックした通信に返す代替品の名前（$redirect / $redirect-rule）。無ければ None"""
+        with self.lock:
+            if not self.redirect_rules:
+                return None
+            best = None
+            for r in self.redirect_rules:
+                if (best is None or r.redirect_prio > best.redirect_prio) and r.matches(url, host, page_host, rtype):
+                    best = r
+            if best is None:
+                return None
+            for r in self.redirect_exc:
+                if r.redirect in ("", best.redirect) and r.matches(url, host, page_host, rtype):
+                    return None
+            return None if best.redirect in ("", "none") else best.redirect
+
     def page_flags(self, page_url: str, page_host: str) -> set[str]:
         """ページ単位の例外 (document=サイト全体許可 / elemhide / generichide)"""
         out = set()
@@ -725,6 +796,28 @@ class FilterEngine:
                     seen.add(sk)
                     out.append((name, args))
             return out
+
+    def procedural_for(self, host: str) -> tuple[list[dict], list[str]]:
+        """そのサイトの拡張 CSS: (ページ内スクリプトで実行する手順, そのまま差し込める CSS)"""
+        with self.lock:
+            keys = cosmetic_keys(host)
+            excs: set[str] = set(self.proc_exc.get("", ()))
+            for k in keys:
+                excs |= self.proc_exc.get(k, set())
+            tasks, css, seen = [], [], set()
+            for k in keys:
+                for key, task, exclude in self.proc.get(k, ()):
+                    if key in seen or key in excs:
+                        continue
+                    if exclude and any(s in exclude for s in host_suffixes(host)):
+                        continue
+                    seen.add(key)
+                    rule = procedural.plain_css_rule(task)
+                    if rule:
+                        css.append(rule)
+                    else:
+                        tasks.append(task)
+            return tasks, css
 
     def specific_selectors(self, host: str) -> list[str]:
         with self.lock:
@@ -810,7 +903,7 @@ class FilterEngine:
                 "dns_domains": len(self.dns_block),
                 "network_rules": self.counts["network"] + len(self.param_rules),
                 "cosmetic_generic": len(self.generic_hide),
-                "cosmetic_specific": sum(len(v) for v in self.specific_hide.values()),
+                "cosmetic_specific": sum(len(v) for v in self.specific_hide.values()) + self.counts["procedural"],
                 "scriptlets": self.counts["scriptlet"],
                 "unsupported": (self.counts["network_unsupported"] + self.counts["cosmetic_unsupported"]
                                 + self.counts["scriptlet_unsupported"]),
