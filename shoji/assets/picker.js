@@ -13,14 +13,14 @@
       chosen: 'この範囲を隠します。広すぎる・狭すぎるときは「広げる」「狭める」かセレクタを直接編集できます。',
       none: '一致する要素がありません。セレクタを確認してください。', failed: '保存できませんでした: ',
       saved: '保存しました（{rule}）。ダッシュボードの「ユーザールール」で取り消せます。', exists: '同じルールが既にあります。',
-      offline: 'Shoji に接続できませんでした。', off: 'このサイトでは Shoji を止める…', offTip: 'このサイトのフィルタを止める（確認画面が開きます）' },
+      offline: 'Shoji に接続できませんでした。' },
     en: { title: 'Shoji: choose what to hide', click: 'Click the part you want to hide (Esc to quit)', ph: 'The selector appears here after you click',
       up: 'Wider', upTip: 'Select the enclosing element', down: 'Narrower', downTip: 'Go back one level in', pick: 'Pick again',
       cancel: 'Cancel', save: 'Hide on this site', badSel: 'Invalid selector', count: '{n} element(s)',
       chosen: 'This area will be hidden. Use Wider / Narrower or edit the selector if it is too big or too small.',
       none: 'Nothing matches. Check the selector.', failed: 'Could not save: ',
       saved: 'Saved ({rule}). You can undo it under "User rules" in the dashboard.', exists: 'That rule already exists.',
-      offline: 'Could not reach Shoji.', off: 'Turn Shoji off on this site…', offTip: 'Turn filtering off on this site (opens a confirmation page)' }
+      offline: 'Could not reach Shoji.' }
   };
   var T = TEXT[OPT.lang] || TEXT.en;
   function tr(k, v) { return T[k].replace(/\{(\w+)\}/g, function (m, x) { return v && v[x] !== undefined ? v[x] : m; }); }
@@ -82,8 +82,7 @@
     '.row{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;align-items:center}',
     '.btn{font:inherit;font-size:12.5px;padding:5px 11px;border-radius:7px;border:1px solid #d9d8d3;background:#fff;color:#111;cursor:pointer}',
     '.btn.pri{background:#2a78d6!important;border-color:#2a78d6!important;color:#fff!important}',
-    '.sp{flex:1}.n{font-size:12px;color:#7a7974}',
-    '.btn.link{border:0;background:none!important;padding:5px 2px;color:#2a78d6!important;text-decoration:underline}'
+    '.sp{flex:1}.n{font-size:12px;color:#7a7974}'
   ].join('');
 
   function el(tag, attrs, text) {
@@ -115,7 +114,6 @@
     row.appendChild(el('span', { 'class': 'n', 'data-k': 'n' }));
     panel.appendChild(row);
     var row2 = el('div', { 'class': 'row' });
-    row2.appendChild(el('button', { 'class': 'btn link', 'data-k': 'off', title: T.offTip }, T.off));
     row2.appendChild(el('span', { 'class': 'sp' }));
     row2.appendChild(el('button', { 'class': 'btn', 'data-k': 'cancel' }, T.cancel));
     row2.appendChild(el('button', { 'class': 'btn pri', 'data-k': 'save' }, T.save));
@@ -126,9 +124,6 @@
     q('down').onclick = function () { if (history.length) choose(history.pop()); };
     q('pick').onclick = function () { chosen = null; history = []; setPreview(''); q('sel').value = ''; q('n').textContent = ''; msg(T.click); picking = true; };
     q('cancel').onclick = stop;
-    q('off').onclick = function () {
-      location.href = MAGIC + '/allow-site?host=' + encodeURIComponent(SITE) + '&return=' + encodeURIComponent(location.href);
-    };
     q('save').onclick = save;
     q('sel').oninput = function () { setPreview(q('sel').value.trim()); updateCount(); };
   }
@@ -220,11 +215,16 @@
       .catch(function () { msg(T.offline); q('save').disabled = false; });
   }
 
-  // Alt+Shift+H で起動 / 終了
+  // Alt+Shift+H: 要素の選択ブロックを起動 / 終了
+  // Alt+Shift+P: このサイトで Shoji を止める（Shoji の確認画面を開く）
   document.addEventListener('keydown', function (e) {
-    if (e.altKey && e.shiftKey && !e.ctrlKey && !e.metaKey && (e.code === 'KeyH' || e.key === 'H' || e.key === 'h')) {
+    if (!e.altKey || !e.shiftKey || e.ctrlKey || e.metaKey) return;
+    if (e.code === 'KeyH' || e.key === 'H' || e.key === 'h') {
       e.preventDefault(); e.stopPropagation();
       if (host) stop(); else start();
+    } else if (e.code === 'KeyP' || e.key === 'P' || e.key === 'p') {
+      e.preventDefault(); e.stopPropagation();
+      location.href = MAGIC + '/allow-site?host=' + encodeURIComponent(SITE) + '&return=' + encodeURIComponent(location.href);
     }
   }, true);
 })(window.__SHOJI_MAGIC__);

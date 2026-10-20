@@ -194,6 +194,9 @@ code{font-family:ui-monospace,Consolas,monospace;font-size:12.5px;background:var
       <p class="muted small" data-i="allow.desc"></p>
       <div class="row"><input type="text" id="wl-input" placeholder="example.com" style="flex:1"><button class="btn pri" id="wl-add" data-i="add"></button></div>
       <div class="chips" id="wl"></div>
+      <h3 data-i="recent.sites"></h3>
+      <p class="muted small" data-i-html="recent.sites.desc"></p>
+      <div class="chips" id="recent-sites"></div>
     </div>
     <div class="card">
       <h2 data-i="ex.title"></h2>
@@ -328,6 +331,7 @@ document.querySelectorAll('#tabs button').forEach(b => b.onclick = () => {
   document.querySelectorAll('section').forEach(s => s.classList.toggle('active', s.id === b.dataset.tab));
   if (b.dataset.tab === 'filters') loadFilters();
   if (b.dataset.tab === 'log') pollLog();
+  if (b.dataset.tab === 'allow') loadRecentSites();
 });
 
 /* ---------- フィルタリングログ ---------- */
@@ -579,6 +583,27 @@ $('#ex-add').onclick = () => addTo('#ex-input', 'https_exclusions');
 $('#wl-input').onkeydown = e => e.key === 'Enter' && addTo('#wl-input', 'whitelist');
 $('#ex-input').onkeydown = e => e.key === 'Enter' && addTo('#ex-input', 'https_exclusions');
 $('#cookie-save').onclick = async () => { const r = await api('/api/config', {stealth: {first_party_cookie_max_age_hours: +$('#cookie-hours').value || 0}}); CFG = r.config; toast(t('toast.saved2')); };
+
+// 最近開いたサイト（フィルタリングログのページ処理から）。ワンクリックで許可リストへ
+async function loadRecentSites() {
+  const r = await api('/api/log?action=page&limit=300');
+  const seen = [];
+  for (const e of r.items) {
+    const h = (e.host || '').replace(/^www\./, '');
+    if (h && !seen.includes(h)) seen.push(h);
+    if (seen.length >= 12) break;
+  }
+  const wl = (CFG && CFG.whitelist) || [];
+  const list = seen.filter(h => !wl.some(w => h === w || h.endsWith('.' + w)));
+  $('#recent-sites').innerHTML = list.length
+    ? list.map(h => `<span class="chip">${esc(h)}<button class="btn mini" data-site="${esc(h)}" style="margin-left:4px">${t('recent.add')}</button></span>`).join('')
+    : `<span class="muted small">${t('recent.none')}</span>`;
+  $('#recent-sites').querySelectorAll('button').forEach(b => b.onclick = async () => {
+    const v = b.dataset.site;
+    const res = await api('/api/config', {whitelist: CFG.whitelist.concat([v])}); CFG = res.config; renderConfig(); loadRecentSites();
+    toast(t('toast.added', {v}));
+  });
+}
 
 function renderConfig() {
   if (!CFG) return;

@@ -7,9 +7,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ## [Unreleased]
 
 ### Added
-- "Turn Shoji off on this site": a link in the element picker panel (`Alt`+`Shift`+`H`) opens a Shoji
-  confirmation page where you can turn filtering off on the current site for an hour or always (adds it to
-  the allowlist). Dangerous-site blocking still applies to third-party requests on allowlisted sites.
+- "Turn Shoji off on this site": press `Alt`+`Shift`+`P` on a page to open a Shoji confirmation page where you
+  can turn filtering off on that site for an hour or always (adds it to the allowlist). The dashboard's
+  Allowlist tab also lists recently opened sites with a one-click "Allow" button. Dangerous-site blocking
+  still applies to third-party requests on allowlisted sites.
 - The log file (`shoji.log`) and console messages now follow the display language too.
 
 ### Security
