@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-10-20
+
 ### Added
 - "Turn Shoji off on this site": press `Ctrl`+`Shift`+`Alt`+`P` on a page to open a Shoji confirmation page where you
   can turn filtering off on that site for an hour or always (adds it to the allowlist). The dashboard's
