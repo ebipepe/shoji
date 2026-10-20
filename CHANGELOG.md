@@ -21,7 +21,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### Changed
 - Keyboard shortcuts are now `Ctrl`+`Shift`+`Alt`+`H` (element picker) and `Ctrl`+`Shift`+`Alt`+`P` (turn off on
   this site). `Alt`+`Shift`+letter clashes with Chrome/Edge shortcuts and with page access keys in Firefox.
-  Shortcuts are ignored while typing in a text field.
+  Shortcuts are ignored while typing in a text field, and both can be changed or disabled in the dashboard
+  (Setup → Keyboard shortcuts).
 - Pages that Shoji modified are sent with `Cache-Control: no-store`, so turning a site off or changing rules
   is not hidden by a cached, already-filtered copy.
 

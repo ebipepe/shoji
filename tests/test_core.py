@@ -273,6 +273,16 @@ def test_tokens_for_allow_pages():
     assert 'value="tok123"' in page and "<x>" not in page
 
 
+def test_shortcuts():
+    from shoji.config import DEFAULT_CONFIG, normalize_shortcut
+    assert normalize_shortcut("ctrl + shift+alt+h") == "Ctrl+Shift+Alt+H"
+    assert normalize_shortcut("Alt+Ctrl+1") == "Ctrl+Alt+1"
+    assert normalize_shortcut("F2") == "F2" and normalize_shortcut("") == ""
+    for bad in ("h", "Shift+H", "Win+H", "Ctrl+Ctrl+H", "Ctrl+Shift+Alt+Period", "Ctrl+F13"):
+        assert normalize_shortcut(bad) is None, bad
+    assert DEFAULT_CONFIG["app"]["shortcuts"] == {"picker": "Ctrl+Shift+Alt+H", "site_off": "Ctrl+Shift+Alt+P"}
+
+
 if __name__ == "__main__":
     for name, fn in list(globals().items()):
         if name.startswith("test_"):

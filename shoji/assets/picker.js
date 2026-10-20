@@ -220,15 +220,27 @@
   // Alt+Shift+文字 は Chrome / Edge のショートカット（Alt+Shift+T/I/A/N/P など）や、Firefox でページの
   // アクセスキー（Wikipedia の Alt+Shift+H など）と重なるため、3 つの修飾キーの組み合わせにしている。
   // 文字入力中は反応しない（AltGr を使うキーボード配列での文字入力と重ならないように）。
+  // キーは設定（ダッシュボードの「セットアップ」）で変更できる。"" は無効
   function typing(t) {
     return t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName || ''));
   }
+  function parseKey(s) {
+    if (!s) return null;
+    var parts = String(s).split('+'), key = parts.pop();
+    var code = /^[A-Z]$/.test(key) ? 'Key' + key : (/^[0-9]$/.test(key) ? 'Digit' + key : (/^F\d{1,2}$/.test(key) ? key : null));
+    if (!code) return null;
+    return { code: code, ctrl: parts.indexOf('Ctrl') >= 0, shift: parts.indexOf('Shift') >= 0, alt: parts.indexOf('Alt') >= 0 };
+  }
+  function hit(k, e) { return k && e.code === k.code && e.ctrlKey === k.ctrl && e.shiftKey === k.shift && e.altKey === k.alt && !e.metaKey; }
+  var KEYS = OPT.keys || {};
+  var K_PICK = parseKey(KEYS.picker === undefined ? 'Ctrl+Shift+Alt+H' : KEYS.picker);
+  var K_OFF = parseKey(KEYS.site_off === undefined ? 'Ctrl+Shift+Alt+P' : KEYS.site_off);
   document.addEventListener('keydown', function (e) {
-    if (!e.altKey || !e.shiftKey || !e.ctrlKey || e.metaKey || typing(e.target)) return;
-    if (e.code === 'KeyH') {
+    if (typing(e.target)) return;
+    if (hit(K_PICK, e)) {
       e.preventDefault(); e.stopPropagation();
       if (host) stop(); else start();
-    } else if (e.code === 'KeyP') {
+    } else if (hit(K_OFF, e)) {
       e.preventDefault(); e.stopPropagation();
       location.href = MAGIC + '/allow-site?host=' + encodeURIComponent(SITE) + '&return=' + encodeURIComponent(location.href);
     }

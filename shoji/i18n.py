@@ -182,6 +182,8 @@ MESSAGES: dict[str, dict[str, str]] = {
     "picker.selector": {"ja": "このセレクタは使えません", "en": "This selector is not allowed"},
     "picker.rate": {"ja": "短時間に追加しすぎです", "en": "Too many rules in a short time"},
     "picker.comment": {"ja": "要素の選択ブロックで追加 ({time})", "en": "Added with the element picker ({time})"},
+    "sc.invalid": {"ja": "このショートカットは使えません（Ctrl か Alt を含む組み合わせ、または F1〜F12 にしてください）",
+                   "en": "This shortcut cannot be used (use a combination with Ctrl or Alt, or F1–F12)"},
     "rule.invalid": {"ja": "ルールが正しくありません", "en": "Invalid rule"},
     # ---- Windows の設定
     "win.only": {"ja": "Windows 専用の機能です", "en": "This works on Windows only"},

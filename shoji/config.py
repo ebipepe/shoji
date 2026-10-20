@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import copy
 import json
+import re
 import os
 import sys
 import threading
@@ -40,6 +41,31 @@ RULES_DIR = BASE_DIR / "rules"
 ASSETS_DIR = Path(__file__).resolve().parent / "assets"
 CONFIG_PATH = DATA_DIR / "config.json"
 STATS_DB = DATA_DIR / "stats.db"
+
+DEFAULT_SHORTCUTS = {"picker": "Ctrl+Shift+Alt+H", "site_off": "Ctrl+Shift+Alt+P"}
+_SHORTCUT_RE = re.compile(r"^(?:(?:Ctrl|Shift|Alt)\+){0,3}(?:[A-Z0-9]|F(?:[1-9]|1[0-2]))$")
+
+
+def normalize_shortcut(value) -> str | None:
+    """"ctrl + shift+h" → "Ctrl+Shift+H"。使えない組み合わせは None（"" は無効化として受け付ける）"""
+    s = str(value or "").strip()
+    if not s:
+        return ""
+    parts = [p.strip() for p in s.split("+") if p.strip()]
+    if not parts:
+        return None
+    key = parts[-1].upper()
+    mods = {p.capitalize() for p in parts[:-1]}
+    if not mods <= {"Ctrl", "Shift", "Alt"} or len(mods) != len(parts) - 1:
+        return None
+    out = "+".join([m for m in ("Ctrl", "Shift", "Alt") if m in mods] + [key])
+    if not _SHORTCUT_RE.match(out):
+        return None
+    # 修飾キーなしの英数字（ページでの文字入力と衝突）や、Shift だけの組み合わせ（大文字の入力）は使わない
+    if not (key.startswith("F") and len(key) > 1) and (not mods or mods == {"Shift"}):
+        return None
+    return out
+
 
 DEFAULT_CONFIG: dict = {
     "features": {
@@ -84,6 +110,8 @@ DEFAULT_CONFIG: dict = {
         "tray": True,                   # タスクトレイに常駐する
         "open_dashboard_on_start": True,
         "language": "auto",             # 表示言語: auto（Windows の表示言語に従う） / ja / en
+        # ページ上のショートカット（"" で無効）。修飾キー Ctrl / Shift / Alt と、英字・数字・F1〜F12
+        "shortcuts": dict(DEFAULT_SHORTCUTS),
     },
     "dns": {
         "listen_host": "127.0.0.1",     # LAN の他端末(スマホ等)からも使う場合は 0.0.0.0

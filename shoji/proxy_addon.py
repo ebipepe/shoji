@@ -23,7 +23,7 @@ from mitmproxy import http, tls
 from mitmproxy.net.http.headers import infer_content_encoding
 
 from . import injector, lists, reqlog, scriptlets, winsys, youtube
-from .config import BUILTIN_HTTPS_EXCLUSIONS, CERT_DIR, is_whitelisted
+from .config import BUILTIN_HTTPS_EXCLUSIONS, CERT_DIR, DEFAULT_SHORTCUTS, is_whitelisted
 from .context import AppContext
 from .i18n import lang, t
 from .injector import MAGIC_HOST, MAGIC_ORIGIN
@@ -482,6 +482,7 @@ class ShojiAddon:
                 "gen": use_generic,
                 "v": self.ctx.rules_version,
                 "lang": lang(),
+                "keys": {**DEFAULT_SHORTCUTS, **((cfg.get("app") or {}).get("shortcuts") or {})},
             }
             calls = (self.engine.scriptlets_for(host)
                      if F.get("scriptlets", True) and "elemhide" not in flags else [])

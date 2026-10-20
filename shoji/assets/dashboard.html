@@ -272,6 +272,12 @@ code{font-family:ui-monospace,Consolas,monospace;font-size:12.5px;background:var
       <p class="muted small" data-i="setup.lang.desc"></p>
       <select id="lang-select2"><option value="auto" data-i="lang.auto"></option><option value="ja">日本語</option><option value="en">English</option></select>
     </div></div>
+    <div class="step"><div class="n">⌨</div><div style="flex:1">
+      <b data-i="sc.title"></b>
+      <p class="muted small" data-i="sc.desc"></p>
+      <div id="shortcuts"></div>
+      <p class="small" id="sc-warn" style="color:var(--warn)"></p>
+    </div></div>
   </div>
 </section>
 </main>
@@ -298,13 +304,19 @@ function t(key, vars) {
   if (typeof s === 'string' && vars) s = s.replace(/\{(\w+)\}/g, (m, k) => vars[k] !== undefined ? vars[k] : m);
   return s;
 }
+const SC_DEFAULT = {picker: 'Ctrl+Shift+Alt+H', site_off: 'Ctrl+Shift+Alt+P'};
+const kbd = s => s ? s.split('+').map(p => '<code>' + esc(p) + '</code>').join('+') : esc(t('sc.off'));
+function scVars() { const k = Object.assign({}, SC_DEFAULT, ((CFG || {}).app || {}).shortcuts || {}); return {picker: kbd(k.picker), siteoff: kbd(k.site_off)}; }
 function applyLang(lang) {
   LANG = SHOJI_I18N[lang] ? lang : 'en';
   LOCALE = LANG === 'ja' ? 'ja-JP' : 'en-US';
   document.documentElement.lang = LANG;
   document.querySelectorAll('[data-i]').forEach(el => { el.textContent = t(el.dataset.i); });
-  document.querySelectorAll('[data-i-html]').forEach(el => { el.innerHTML = t(el.dataset.iHtml); });   // 自前の文言だけ
+  applyHtmlTexts();
   document.querySelectorAll('[data-i-ph]').forEach(el => { el.placeholder = t(el.dataset.iPh); });
+}
+function applyHtmlTexts() {
+  document.querySelectorAll('[data-i-html]').forEach(el => { el.innerHTML = t(el.dataset.iHtml, scVars()); });   // 自前の文言だけ
 }
 const fmt = n => (n || 0).toLocaleString(LOCALE);
 
@@ -605,8 +617,51 @@ async function loadRecentSites() {
   });
 }
 
+/* ---------- ショートカット ---------- */
+let SC_CAPTURE = null;
+function renderShortcuts() {
+  const k = Object.assign({}, SC_DEFAULT, (CFG.app || {}).shortcuts || {});
+  $('#shortcuts').innerHTML = ['picker', 'site_off'].map(n => `<div class="row" style="margin-bottom:6px">
+    <span style="min-width:260px">${esc(t('sc.' + n))}</span>
+    <button class="btn" data-sc="${n}" style="min-width:200px">${SC_CAPTURE === n ? esc(t('sc.press')) : kbd(k[n])}</button>
+    <button class="btn mini" data-sc-default="${n}">${esc(t('sc.default'))}</button>
+    <button class="btn mini" data-sc-off="${n}">${esc(t('sc.disable'))}</button></div>`).join('');
+  $('#shortcuts').querySelectorAll('[data-sc]').forEach(b => b.onclick = () => { SC_CAPTURE = b.dataset.sc; renderShortcuts(); });
+  $('#shortcuts').querySelectorAll('[data-sc-default]').forEach(b => b.onclick = () => saveShortcut(b.dataset.scDefault, SC_DEFAULT[b.dataset.scDefault]));
+  $('#shortcuts').querySelectorAll('[data-sc-off]').forEach(b => b.onclick = () => saveShortcut(b.dataset.scOff, ''));
+}
+// よく使われるブラウザ・サイトの操作と重なりやすい組み合わせ（修飾キーが 1〜2 個のもの）
+function riskyShortcut(s) {
+  const mods = s.split('+').slice(0, -1);
+  return !!s && !/^F\d+$/.test(s.split('+').pop()) && mods.length < 3;
+}
+async function saveShortcut(name, value) {
+  SC_CAPTURE = null;
+  const r = await api('/api/config', {app: {shortcuts: {[name]: value}}});
+  if (!r.ok) { toast(r.error || t('rule.failed')); renderShortcuts(); return; }
+  CFG = r.config; renderShortcuts(); applyHtmlTexts();
+  $('#sc-warn').textContent = value && riskyShortcut(value) ? t('sc.warn', {key: value}) : '';
+  if (value) toast(t('sc.saved', {key: value}));
+}
+document.addEventListener('keydown', e => {
+  if (!SC_CAPTURE) return;
+  e.preventDefault(); e.stopPropagation();
+  if (e.key === 'Escape') { SC_CAPTURE = null; renderShortcuts(); return; }
+  let key = null;
+  if (/^Key[A-Z]$/.test(e.code)) key = e.code.slice(3);
+  else if (/^Digit[0-9]$/.test(e.code)) key = e.code.slice(5);
+  else if (/^F([1-9]|1[0-2])$/.test(e.code)) key = e.code;
+  if (!key) return;                       // 修飾キーだけが押された → 続きを待つ
+  const parts = [];
+  if (e.ctrlKey) parts.push('Ctrl');
+  if (e.shiftKey) parts.push('Shift');
+  if (e.altKey) parts.push('Alt');
+  saveShortcut(SC_CAPTURE, parts.concat([key]).join('+'));
+}, true);
+
 function renderConfig() {
   if (!CFG) return;
+  renderShortcuts(); applyHtmlTexts();
   toggles('#feature-toggles', FEATURES, 'f.', 'features');
   toggles('#stealth-toggles', STEALTH, 's.', 'stealth');
   chips('#wl', CFG.whitelist, 'whitelist');

@@ -12,7 +12,7 @@ from flask import Flask, Response, jsonify, request, send_file
 from werkzeug.serving import WSGIRequestHandler, make_server
 
 from . import __version__, i18n, lists, stats as stats_mod, winsys
-from .config import ASSETS_DIR, BUILTIN_HTTPS_EXCLUSIONS, STATS_DB
+from .config import ASSETS_DIR, BUILTIN_HTTPS_EXCLUSIONS, DEFAULT_SHORTCUTS, STATS_DB, normalize_shortcut
 from .context import AppContext
 
 
@@ -175,6 +175,19 @@ def create_app(ctx: AppContext) -> Flask:
         allowed = {"features", "stealth", "whitelist", "https_exclusions", "filter_lists",
                    "update_interval_hours", "dns", "proxy", "app"}
         patch = {k: v for k, v in patch.items() if k in allowed}
+        sc = patch["app"].get("shortcuts") if isinstance(patch.get("app"), dict) else None
+        if sc is not None:
+            if not isinstance(sc, dict):
+                return jsonify({"ok": False, "error": "bad shortcuts"}), 400
+            clean = {}
+            for name, value in sc.items():
+                if name not in DEFAULT_SHORTCUTS:
+                    continue
+                v = normalize_shortcut(value)
+                if v is None:
+                    return jsonify({"ok": False, "error": i18n.t("sc.invalid")}), 400
+                clean[name] = v
+            patch["app"]["shortcuts"] = clean
         reload_lists = "filter_lists" in patch
         ctx.config.update(patch)
         if "app" in patch:

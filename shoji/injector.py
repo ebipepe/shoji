@@ -77,7 +77,7 @@ def build_snippet(cfg: dict, specific: list[str], exceptions: list[str], generic
     # スクリプトレットはページのスクリプトより先に動く必要があるため、同じ <script> の先頭に置く
     # 詐欺ページ対策はページのスクリプトより先に alert 等を見張る必要があるため、最初に置く
     js = js_ascii(_GUARD_JS.replace(_PLACEHOLDER, cfg_json) + scriptlet_js + _CONTENT_JS.replace(_PLACEHOLDER, cfg_json)
-                  + _PICKER_JS.replace(_MAGIC_PLACEHOLDER, json.dumps({"magic": MAGIC_ORIGIN, "lang": cfg.get("lang", "ja")})))
+                  + _PICKER_JS.replace(_MAGIC_PLACEHOLDER, json.dumps({"magic": MAGIC_ORIGIN, "lang": cfg.get("lang", "ja"), "keys": cfg.get("keys") or {}})))
     script_hash = _sha256(js)
     parts.append(f"<script>{js}</script>")
     return "".join(parts), script_hash, style_hash
