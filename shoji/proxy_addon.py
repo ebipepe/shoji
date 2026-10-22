@@ -249,19 +249,28 @@ class ShojiAddon:
         def _log(action, **kw):
             meta["log"] = log.add(action, url, host, rtype=rtype, method=req.method, page=page_host, **kw)
 
-        if (not self.ctx.paused and F.get("block_malware", True) and page_host and page_host != host
-                and self.ctx.is_allowed(page_host) and not self.ctx.is_allowed(host)):
-            # 許可リストのサイトに埋め込まれた他サイトの通信でも、危険サイトだけは止める
+        def _security_only():
             rule = self.engine.match_url(url, host, page_host, rtype)
             if rule and self.engine.categorize(host, rule.category) == "security":
                 _log(reqlog.BLOCKED, rule=rule.raw, cat="security")
-                return self._block(flow, rule, "security", rtype, host, url)
+                self._block(flow, rule, "security", rtype, host, url)
+                return True
+            return False
+
+        if (not self.ctx.paused and F.get("block_malware", True) and page_host and page_host != host
+                and self.ctx.is_allowed(page_host) and not self.ctx.is_allowed(host)):
+            # 許可リストのサイトに埋め込まれた他サイトの通信でも、危険サイトだけは止める
+            if _security_only():
+                return
         if self.ctx.paused or self.ctx.is_allowed(host, page_host):
             meta["allowed"] = True
             _log(reqlog.ALLOWED, detail=t("log.paused") if self.ctx.paused else t("log.allowlist"))
             return
         if page_host and "document" in self._page_flags(
                 req.headers.get("referer") or f"https://{page_host}/", page_host):
+            # フィルターリストの例外（$document）で除外されたページでも、危険サイトだけは止める
+            if F.get("block_malware", True) and _security_only():
+                return
             meta["allowed"] = True
             _log(reqlog.ALLOWED, detail=t("log.docexc"))
             return

@@ -6,6 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Security
+- Dangerous-site blocking (malware, phishing, cryptomining lists) can no longer be lifted by exception rules
+  in ad or tracker lists, including `$document` page exceptions. Only your own rules, the allowlist or the
+  security lists themselves can lift it.
+- Domain-only lists (Peter Lowe's list, AdGuard DNS filter) now contribute only domain-level rules. Element
+  hiding, scriptlets, URL patterns and options such as `$document` or `$badfilter` in them are ignored, so a
+  tampered copy cannot reach beyond blocking domains.
+- Downloaded filter lists are checked before use: an error page instead of a list, an empty list, a file that is
+  too large, or a list that suddenly shrinks to less than half its previous size is not used. The previous copy
+  stays in use and the Filters tab shows why. "Update now" imports the new copy without the shrink check.
+
 ## [0.5.0] - 2026-10-20
 
 ### Added

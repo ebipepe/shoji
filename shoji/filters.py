@@ -135,6 +135,7 @@ class NetRule:
     redirect: Optional[str] = None          # 代替品の名前（$redirect / $redirect-rule）
     redirect_only: bool = False             # $redirect-rule: 他のルールでブロックされたときだけ使う
     redirect_prio: int = 0
+    user: bool = False                      # 利用者自身のルール（ユーザールール）
     doc_flags: frozenset = frozenset()      # 例外ルールの document/elemhide/generichide
     _regex: Optional[re.Pattern] = field(default=None, repr=False)
     _bad: bool = False
@@ -319,6 +320,9 @@ class FilterEngine:
     def _reset(self):
         self.dns_block: dict[str, str] = {}       # domain -> category
         self.dns_allow: set[str] = set()
+        # 危険サイトのブロックを解除できる例外（利用者のルール・危険サイトのリスト自身）だけ
+        self.dns_allow_trusted: set[str] = set()
+        self._cur_user = False
         self.tracker_hosts: set[str] = set()      # トラッカー系リストに載っているホスト
         self.ad_hosts: set[str] = set()           # 広告系リストに載っているホスト
         self.security_hosts: set[str] = set()     # マルウェア・フィッシング・採掘スクリプトのホスト
@@ -360,7 +364,8 @@ class FilterEngine:
         """sources: [(名前, 本文テキスト, カテゴリ 'ad'|'tracker')]"""
         new = FilterEngine()
         pending: list[tuple[NetRule, list[str]]] = []
-        for _name, text, cat in sources:
+        for name, text, cat in sources:
+            new._cur_user = name == "user"
             for line in text.splitlines():
                 new._parse_line(line.strip(), cat, pending)
         new._index(pending)
@@ -498,7 +503,7 @@ class FilterEngine:
             else:
                 pattern = line
         rule = NetRule(raw=("@@" if exception else "") + line, pattern=pattern, is_regex=is_regex,
-                       exception=exception, category=cat)
+                       exception=exception, category=cat, user=self._cur_user)
         types, not_types, flags = set(), set(), set()
         for opt in filter(None, (o.strip() for o in opts_str.split(","))):
             neg = opt.startswith("~")
@@ -568,6 +573,8 @@ class FilterEngine:
                     if exception:
                         if not flags or flags == {"document"}:
                             self.dns_allow.add(host)
+                            if self._cur_user or cat == "security":
+                                self.dns_allow_trusted.add(host)
                     else:
                         self._add_dns(host, cat)
         if not pattern and not rule.domains and not flags:
@@ -652,7 +659,13 @@ class FilterEngine:
         """ブロック対象なら 'ad' / 'tracker' を返す"""
         domain = domain.lower().rstrip(".")
         with self.lock:
-            for s in host_suffixes(domain):
+            suffixes = list(host_suffixes(domain))
+            if any(s in self.dns_allow_trusted for s in suffixes):
+                return None
+            # 危険なサイトは、フィルターリストの例外ルールでは解除しない（利用者のルールだけが解除できる）
+            if any(self.dns_block.get(s) == "security" for s in suffixes):
+                return "security"
+            for s in suffixes:
                 if s in self.dns_allow:
                     return None
             for s in host_suffixes(domain):
@@ -735,6 +748,9 @@ class FilterEngine:
             for r in self._candidates(host, toks, True, page_host):
                 if r.matches(url_l, host, page_host, rtype):
                     if block.important and not r.important:
+                        continue
+                    if block.category == "security" and not (r.user or r.category == "security"):
+                        # 危険サイトのブロックは、広告などのリストの例外ルールでは解除しない
                         continue
                     return None
             return block
@@ -908,6 +924,37 @@ class FilterEngine:
                 "unsupported": (self.counts["network_unsupported"] + self.counts["cosmetic_unsupported"]
                                 + self.counts["scriptlet_unsupported"]),
             }
+
+
+_DOMAIN_RULE = re.compile(r"^(?:@@)?\|\|[a-z0-9.*_\-]+\^\|?(?:\$[a-z0-9,~=_\-]*)?$", re.I)
+
+
+# ドメインの一覧だけのリストで使ってよいオプション。$document（サイト全体の除外）や $badfilter（他のリストの
+# ルールの無効化）などは、リストの外にまで影響するので使わない
+_SAFE_DOMAIN_OPTS = {"important", "third-party", "~third-party", "3p", "~3p", "1p", "first-party", "all"}
+
+
+def _safe_domain_opts(rule: str) -> bool:
+    _, sep, opts = rule.partition("$")
+    return not sep or all(o.strip().lower() in _SAFE_DOMAIN_OPTS for o in opts.split(",") if o.strip())
+
+
+def domains_only(text: str) -> tuple[str, int]:
+    """ドメインの一覧だけのリスト（DNS 用のリスト・hosts 形式）から、ドメイン単位のルール以外を取り除く。
+
+    配布元が乗っ取られて細工されたリストが配られても、要素の非表示・スクリプトレット・
+    URL のパターン・ページ単位の例外などが紛れ込まないようにする。(残した本文, 取り除いた行数)
+    """
+    keep, dropped = [], 0
+    for line in text.splitlines():
+        s = line.strip()
+        if not s or s.startswith("!") or (s.startswith("#") and not s.startswith("##") and not s.startswith("#@")):
+            continue
+        if _HOSTS_LINE.match(s) or (_DOMAIN_RULE.match(s) and _safe_domain_opts(s)):
+            keep.append(s)
+        else:
+            dropped += 1
+    return "\n".join(keep), dropped
 
 
 def selectors_to_css(sels: list[str], chunk: int = 20) -> str:

@@ -677,7 +677,7 @@ async function loadFilters() {
   $('#lists').innerHTML = `<tr><th>${t('lists.col.on')}</th><th>${t('lists.col.name')}</th><th>${t('lists.col.cat')}</th><th>${t('lists.col.updated')}</th><th class="num">${t('lists.col.size')}</th></tr>` + r.lists.map((l, i) => {
     const desc = LANG === 'ja' ? l.desc : (l.desc_en || l.desc);
     const cat = ['tracker', 'annoyance', 'security'].includes(l.category) ? l.category : 'ad';
-    return `<tr><td><label class="switch"><input type="checkbox" data-n="${i}" ${l.enabled ? 'checked' : ''}><span></span></label></td><td>${esc(l.name)}${desc ? `<div class="muted small">${esc(desc)}</div>` : ''}</td><td><span class="tag">${t('listcat.' + cat)}</span></td><td>${l.updated ? new Date(l.updated * 1000).toLocaleString(LOCALE) : `<span class="muted">${t('lists.never')}</span>`}</td><td class="num">${l.size ? Math.round(l.size / 1024).toLocaleString(LOCALE) + ' KB' : '-'}</td></tr>`;
+    return `<tr><td><label class="switch"><input type="checkbox" data-n="${i}" ${l.enabled ? 'checked' : ''}><span></span></label></td><td>${esc(l.name)}${desc ? `<div class="muted small">${esc(desc)}</div>` : ''}${l.warning ? `<div class="small" style="color:var(--warn)">⚠ ${esc(t('lists.warn', {reason: t(l.warning)}))}</div>` : ''}</td><td><span class="tag">${t('listcat.' + cat)}</span></td><td>${l.updated ? new Date(l.updated * 1000).toLocaleString(LOCALE) : `<span class="muted">${t('lists.never')}</span>`}</td><td class="num">${l.size ? Math.round(l.size / 1024).toLocaleString(LOCALE) + ' KB' : '-'}</td></tr>`;
   }).join('');
   $('#lists').querySelectorAll('input').forEach(inp => inp.onchange = async () => {
     const fl = CFG.filter_lists.map((l, i) => i === +inp.dataset.n ? Object.assign({}, l, {enabled: inp.checked}) : l);

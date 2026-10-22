@@ -133,7 +133,7 @@ DEFAULT_CONFIG: dict = {
         {"name": "AdGuard Mobile Ads", "url": "https://filters.adtidy.org/extension/ublock/filters/11.txt", "category": "ad", "enabled": True},
         {"name": "uBlock filters", "url": "https://ublockorigin.github.io/uAssets/filters/filters.txt", "category": "ad", "enabled": True},
         {"name": "uBlock Privacy", "url": "https://ublockorigin.github.io/uAssets/filters/privacy.txt", "category": "tracker", "enabled": True},
-        {"name": "AdGuard DNS filter", "url": "https://adguardteam.github.io/AdGuardSDNSFilter/Filters/filter.txt", "category": "ad", "enabled": True},
+        {"name": "AdGuard DNS filter", "url": "https://adguardteam.github.io/AdGuardSDNSFilter/Filters/filter.txt", "category": "ad", "enabled": True, "format": "domains"},
         # 危険なサイト（malware-filter は CC0、NoCoin は MIT）
         {"name": "Malicious URL Blocklist (URLhaus)", "url": "https://malware-filter.gitlab.io/malware-filter/urlhaus-filter-ag-online.txt",
          "category": "security", "enabled": True, "desc": "マルウェアを配布している URL（abuse.ch URLhaus のデータ）",
@@ -145,7 +145,7 @@ DEFAULT_CONFIG: dict = {
          "mirrors": ["https://cdn.jsdelivr.net/gh/hoshsadiq/adblock-nocoin-list@master/nocoin.txt"],
          "category": "security", "enabled": True, "desc": "ブラウザで勝手に仮想通貨を採掘するスクリプト",
          "desc_en": "Scripts that mine cryptocurrency in your browser"},
-        {"name": "Peter Lowe's list", "url": "https://pgl.yoyo.org/adservers/serverlist.php?hostformat=adblockplus&showintro=0&mimetype=plaintext", "category": "ad", "enabled": True},
+        {"name": "Peter Lowe's list", "url": "https://pgl.yoyo.org/adservers/serverlist.php?hostformat=adblockplus&showintro=0&mimetype=plaintext", "category": "ad", "enabled": True, "format": "domains"},
         # 迷惑要素（Annoyances）。表示崩れの可能性があるため、最初はオフ
         {"name": "AdGuard Cookie Notices", "url": "https://filters.adtidy.org/extension/ublock/filters/18.txt", "category": "annoyance", "enabled": False,
          "desc": "Cookie の同意を求めるバナー・ポップアップを隠す",
@@ -227,7 +227,7 @@ def _with_default_lists(data: dict) -> dict:
     for e in data.get("filter_lists", []):
         d = defaults.get(e.get("url"))
         if d:
-            for k in ("desc", "desc_en", "category", "mirrors"):
+            for k in ("desc", "desc_en", "category", "mirrors", "format"):
                 if k in d:
                     e[k] = d[k]
     return data

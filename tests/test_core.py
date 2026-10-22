@@ -357,6 +357,56 @@ def test_redirects():
     assert png.startswith(b"\x89PNG") and png[16:24] == b"\x00\x00\x00\x20\x00\x00\x00\x20"
 
 
+def test_domains_only_lists():
+    from shoji.filters import domains_only
+    text = "\n".join([
+        "! comment", "# hosts comment", "",
+        "||ads.example^", "||track.example^$important", "@@||ok.example^|", "0.0.0.0 bad.example",
+        "example.com##.ad", "##+js(set-constant, a, 1)", "/banner/*", "@@||site.example^$document",
+        "||cdn.example/path.js", "example.com#$#body { color: red }", "||doubleclick.net^$badfilter",
+    ])
+    kept, dropped = domains_only(text)
+    assert kept.splitlines() == ["||ads.example^", "||track.example^$important", "@@||ok.example^|", "0.0.0.0 bad.example"], kept
+    assert dropped == 7, dropped
+    from shoji.config import DEFAULT_CONFIG
+    fmt = {e["name"]: e.get("format") for e in DEFAULT_CONFIG["filter_lists"]}
+    assert fmt["Peter Lowe's list"] == "domains" and fmt["AdGuard DNS filter"] == "domains"
+    assert fmt["EasyList"] is None
+
+
+def test_security_not_lifted_by_list_exceptions():
+    from shoji.filters import FilterEngine
+    e = FilterEngine()
+    e.load([
+        ("URLhaus", "||evil.example^\n||mal.example/payload.exe", "security"),
+        ("EasyList", "||ads.example^\n@@||evil.example^\n@@||mal.example^$script\n@@||ads.example/ok.js", "ad"),
+    ])
+    # 広告リストの例外では、危険サイトのブロックは解除されない
+    assert e.dns_lookup("evil.example") == "security"
+    assert e.match_url("https://evil.example/x", "evil.example", "site.example", "script") is not None
+    assert e.match_url("https://mal.example/payload.exe", "mal.example", "site.example", "script") is not None
+    # 広告のブロックは、従来どおり例外で解除できる
+    assert e.match_url("https://ads.example/ok.js", "ads.example", "site.example", "script") is None
+    # 利用者自身のルールなら解除できる
+    e2 = FilterEngine()
+    e2.load([("URLhaus", "||evil.example^", "security"), ("user", "@@||evil.example^", "ad")])
+    assert e2.dns_lookup("evil.example") is None
+    assert e2.match_url("https://evil.example/x", "evil.example", "site.example", "script") is None
+
+
+def test_list_download_checks():
+    from shoji import lists
+    rules = "\n".join(f"||ad{i}.example^" for i in range(2000))
+    assert lists.check_content(rules, None) == ""
+    assert lists.check_content("<!DOCTYPE html><html><body>502 Bad Gateway</body></html>" + "x" * 200, None) == "list.warn.html"
+    assert lists.check_content("! only comments\n! here", None) == "list.warn.empty"
+    small = "\n".join(f"||ad{i}.example^" for i in range(500))
+    assert lists.check_content(small, rules) == "list.warn.shrunk"
+    assert lists.check_content(small, rules, force=True) == ""          # 「今すぐ更新」では取り込む
+    assert lists.check_content(small, small[:100]) == ""                # 前回が小さいリストは対象外
+    assert lists.count_rules("! c\n# hosts\n[Adblock Plus 2.0]\n##.ad\n||a^\n") == 2
+
+
 if __name__ == "__main__":
     for name, fn in list(globals().items()):
         if name.startswith("test_"):
