@@ -52,12 +52,12 @@ YouTube の動画広告を取り除き、アクセス解析があなたを追い
 
 <table>
 <tr>
-<td width="50%"><img src="docs/images/dashboard-ja.png" alt="ダッシュボード: ブロックした広告とトラッカーの数、節約した通信量と時間、日別のグラフ"><br><sub><b>ダッシュボード</b> — ブロックした数や、節約できた通信量・時間の目安（見本のデータ）</sub></td>
-<td width="50%"><img src="docs/images/log-ja.png" alt="フィルタリングログ: ブロックした通信、一致したルール、代替品を返した記録"><br><sub><b>フィルタリングログ</b> — 通信ごとの処理と一致したルール。「許可」「ブロック」もワンクリック</sub></td>
+<td width="50%" valign="top"><img src="docs/images/dashboard-ja.png" alt="ダッシュボード: ブロックした広告とトラッカーの数、節約した通信量と時間、日別のグラフ"><br><sub><b>ダッシュボード</b> — ブロックした数や、節約できた通信量・時間の目安（見本のデータ）</sub></td>
+<td width="50%" valign="top"><img src="docs/images/log-ja.png" alt="フィルタリングログ: ブロックした通信、一致したルール、代替品を返した記録"><br><sub><b>フィルタリングログ</b> — 通信ごとの処理と一致したルール。「許可」「ブロック」もワンクリック</sub></td>
 </tr>
 <tr>
-<td><img src="docs/images/picker-ja.png" alt="ページ上の PR の枠を選んでいる、要素の選択ブロックのパネル"><br><sub><b>要素の選択ブロック</b> — <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>H</kbd> で、消したい部分をクリック</sub></td>
-<td><img src="docs/images/danger-ja.png" alt="危険なサイトをブロックした警告画面"><br><br><img src="docs/images/scam-ja.png" alt="偽のウイルス警告のページの上に出たサポート詐欺の警告"><br><sub><b>危険サイト・詐欺ページ対策</b> — マルウェアやフィッシングのサイト、画面を固める詐欺ページで警告</sub></td>
+<td valign="top"><img src="docs/images/picker-ja.png" alt="ページ上の PR の枠を選んでいる、要素の選択ブロックのパネル"><br><sub><b>要素の選択ブロック</b> — <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>H</kbd> で、消したい部分をクリック</sub></td>
+<td valign="top"><img src="docs/images/danger-ja.png" alt="危険なサイトをブロックした警告画面"><br><br><img src="docs/images/scam-ja.png" alt="偽のウイルス警告のページの上に出たサポート詐欺の警告"><br><sub><b>危険サイト・詐欺ページ対策</b> — マルウェアやフィッシングのサイト、画面を固める詐欺ページで警告</sub></td>
 </tr>
 </table>
 

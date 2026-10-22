@@ -59,12 +59,12 @@ Everything happens on your machine. Nothing is sent to any Shoji server, because
 
 <table>
 <tr>
-<td width="50%"><img src="docs/images/dashboard-en.png" alt="Dashboard: blocked ads and trackers, data and time saved, daily chart"><br><sub><b>Dashboard</b> — what was blocked, estimated data and time saved (demo data)</sub></td>
-<td width="50%"><img src="docs/images/log-en.png" alt="Filtering log listing blocked requests, matched rules and stand-in scripts"><br><sub><b>Filtering log</b> — every request, the rule that matched, and one-click Allow / Block</sub></td>
+<td width="50%" valign="top"><img src="docs/images/dashboard-en.png" alt="Dashboard: blocked ads and trackers, data and time saved, daily chart"><br><sub><b>Dashboard</b> — what was blocked, estimated data and time saved (demo data)</sub></td>
+<td width="50%" valign="top"><img src="docs/images/log-en.png" alt="Filtering log listing blocked requests, matched rules and stand-in scripts"><br><sub><b>Filtering log</b> — every request, the rule that matched, and one-click Allow / Block</sub></td>
 </tr>
 <tr>
-<td><img src="docs/images/picker-en.png" alt="Element picker panel over a sponsored box on a page"><br><sub><b>Element picker</b> — <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>H</kbd>, click what you want gone</sub></td>
-<td><img src="docs/images/danger-en.png" alt="Dangerous site blocked warning page"><br><br><img src="docs/images/scam-en.png" alt="Tech-support scam warning over a fake virus alert page"><br><sub><b>Dangerous sites and scam pages</b> — warning pages for malware/phishing sites and screen-locking scams</sub></td>
+<td valign="top"><img src="docs/images/picker-en.png" alt="Element picker panel over a sponsored box on a page"><br><sub><b>Element picker</b> — <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>H</kbd>, click what you want gone</sub></td>
+<td valign="top"><img src="docs/images/danger-en.png" alt="Dangerous site blocked warning page"><br><br><img src="docs/images/scam-en.png" alt="Tech-support scam warning over a fake virus alert page"><br><sub><b>Dangerous sites and scam pages</b> — warning pages for malware/phishing sites and screen-locking scams</sub></td>
 </tr>
 </table>
 

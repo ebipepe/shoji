@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-10-23
+
 ### Changed
 - The dashboard's summary cards fit on one row on a normal-width window, and tables scroll inside their card on
   narrow screens instead of making the whole page scroll sideways.
