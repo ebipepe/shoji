@@ -441,6 +441,8 @@ class ShojiAddon:
             meta["log"]["status"] = resp.status_code
         if not meta or not resp or resp.stream or meta.get("allowed") or flow.request.pretty_host == MAGIC_HOST:
             return
+        if resp.headers.get("X-Shoji"):
+            return      # Shoji 自身が返したブロック画面・代替品には手を加えない
         cfg = self.ctx.cfg
         F, S = cfg["features"], cfg["stealth"]
         host = flow.request.pretty_host.lower()

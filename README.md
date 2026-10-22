@@ -13,7 +13,7 @@
   <a href="LICENSE"><img alt="License: Apache-2.0" src="https://img.shields.io/badge/license-Apache--2.0-blue"></a>
   <img alt="Platform: Windows" src="https://img.shields.io/badge/platform-Windows%2010%20%7C%2011-informational">
   <img alt="Python 3.12+" src="https://img.shields.io/badge/python-3.12%2B-informational">
-  <img alt="Status: early" src="https://img.shields.io/badge/status-early%20(0.1)-orange">
+  <img alt="Status: early" src="https://img.shields.io/badge/status-early%20(0.x)-orange">
 </p>
 
 <p align="center"><a href="README.ja.md">日本語</a></p>
@@ -25,7 +25,9 @@ It blocks ads and trackers in every browser and in apps that respect the system 
 YouTube video ads, and strips the data that analytics systems use to follow you around the web.
 Everything happens on your machine. Nothing is sent to any Shoji server, because there isn't one.
 
-> **Status:** early release (0.1). It is in daily use on Windows 11 with Microsoft Edge, but expect rough edges.
+<p align="center"><img src="docs/images/compare-en.png" alt="The same news page without Shoji (ad banners and empty ad slots) and with Shoji (ads gone, space closed up)" width="880"></p>
+
+> **Status:** early release (0.x). It is in daily use on Windows 11 with Microsoft Edge, but expect rough edges.
 > Please [open an issue](../../issues) when something breaks.
 
 ## Features
@@ -52,6 +54,19 @@ Everything happens on your machine. Nothing is sent to any Shoji server, because
 | **Filtering log** | A live list of recent requests and what Shoji did with each (blocked, passed, modified, not decrypted, page fixes), with the matching rule and one-click **Allow / Block** that writes a user rule. Kept in memory only. |
 | **Japanese / English** | The whole interface is available in both languages and follows the Windows display language by default. |
 | **Statistics** | Ads, trackers, pop-ups and video ads blocked; estimated data and time saved; top domains; hourly/daily charts; CSV export. |
+
+## Screenshots
+
+<table>
+<tr>
+<td width="50%"><img src="docs/images/dashboard-en.png" alt="Dashboard: blocked ads and trackers, data and time saved, daily chart"><br><sub><b>Dashboard</b> — what was blocked, estimated data and time saved (demo data)</sub></td>
+<td width="50%"><img src="docs/images/log-en.png" alt="Filtering log listing blocked requests, matched rules and stand-in scripts"><br><sub><b>Filtering log</b> — every request, the rule that matched, and one-click Allow / Block</sub></td>
+</tr>
+<tr>
+<td><img src="docs/images/picker-en.png" alt="Element picker panel over a sponsored box on a page"><br><sub><b>Element picker</b> — <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>H</kbd>, click what you want gone</sub></td>
+<td><img src="docs/images/danger-en.png" alt="Dangerous site blocked warning page"><br><br><img src="docs/images/scam-en.png" alt="Tech-support scam warning over a fake virus alert page"><br><sub><b>Dangerous sites and scam pages</b> — warning pages for malware/phishing sites and screen-locking scams</sub></td>
+</tr>
+</table>
 
 ## How it works
 

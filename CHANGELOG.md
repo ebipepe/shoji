@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Changed
+- The dashboard's summary cards fit on one row on a normal-width window, and tables scroll inside their card on
+  narrow screens instead of making the whole page scroll sideways.
+- README: screenshots (before/after comparison, dashboard, filtering log, element picker, warning pages).
+
+### Fixed
+- Shoji's own block pages and stand-in scripts no longer get the page script injected into them.
+
 ### Security
 - Dangerous-site blocking (malware, phishing, cryptomining lists) can no longer be lifted by exception rules
   in ad or tracker lists, including `$document` page exceptions. Only your own rules, the allowlist or the
