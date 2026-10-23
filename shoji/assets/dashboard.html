@@ -280,6 +280,18 @@ code{font-family:ui-monospace,Consolas,monospace;font-size:12.5px;background:var
       <p class="small" id="sc-warn" style="color:var(--warn)"></p>
     </div></div>
   </div>
+  <div class="card" style="margin-top:12px">
+    <div class="step"><div class="n">⏏</div><div style="flex:1">
+      <b data-i="undo.title"></b>
+      <p class="muted small" data-i="undo.desc"></p>
+      <button class="btn" id="undo-btn" data-i="undo.btn"></button>
+      <div id="undo-out" style="display:none;margin-top:10px">
+        <ul id="undo-steps" class="small" style="margin:0 0 8px;padding-left:20px"></ul>
+        <p class="small" id="undo-next"></p>
+        <button class="btn" id="undo-open" data-i="undo.open"></button> <button class="btn pri" id="undo-quit" data-i="undo.quit"></button>
+      </div>
+    </div></div>
+  </div>
 </section>
 </main>
 <div id="toast"></div>
@@ -702,6 +714,19 @@ $('#do-cert').onclick = async () => { const r = await api('/api/system/cert', {}
 $('#pause-btn').onclick = async () => { const r = await api('/api/pause', {paused: !PAUSED}); toast(t(r.paused ? 'toast.paused' : 'toast.resumed')); loadStatus(); };
 $('#auto-toggle').onchange = async e => { const r = await api('/api/autostart', {on: e.target.checked}); toast(t(r.autostart ? 'toast.auto.on' : 'toast.auto.off')); loadStatus(); };
 $('#proxy-on').onclick = async () => { const r = await api('/api/system/proxy', {on: true}); toast(t(r.ok ? 'toast.proxy.on' : 'toast.proxy.manual')); loadStatus(); };
+$('#undo-btn').onclick = async () => {
+  if (!confirm(t('undo.confirm'))) return;
+  $('#undo-btn').disabled = true;
+  try {
+    const r = await api('/api/system/undo', {});
+    $('#undo-steps').innerHTML = r.steps.map(s => `<li>${s.ok ? '✓' : '⚠'} <b>${esc(t('undo.item.' + s.item))}</b>: ${esc(s.message || '')}</li>`).join('');
+    $('#undo-next').innerHTML = t(r.same_dir ? 'undo.next.one' : 'undo.next.two', {data: `<code>${esc(r.data_dir)}</code>`, app: `<code>${esc(r.app_dir)}</code>`});
+    $('#undo-out').style.display = '';
+    loadStatus();
+  } finally { $('#undo-btn').disabled = false; }
+};
+$('#undo-open').onclick = () => api('/api/system/open-data', {});
+$('#undo-quit').onclick = async () => { await api('/api/quit', {}); toast(t('undo.quitting')); };
 $('#proxy-off').onclick = async () => { await api('/api/system/proxy', {on: false}); toast(t('toast.proxy.off')); loadStatus(); };
 $('#dns-on').onclick = async () => { const r = await api('/api/system/dns', {on: true}); toast(r.message); };
 $('#dns-off').onclick = async () => { const r = await api('/api/system/dns', {on: false}); toast(r.message); };

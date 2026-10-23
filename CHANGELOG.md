@@ -6,6 +6,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+- "Remove Shoji from this PC" (Setup tab): one click undoes the changes Shoji made to Windows (Start with Windows,
+  proxy, DNS, the Firefox setting, the root certificate), then shows which folders to delete and offers to quit.
+- Privacy policy (`docs/PRIVACY.md`), code signing policy (`docs/CODE_SIGNING.md`) and uninstall instructions in
+  the README.
+
+### Fixed
+- Restoring the proxy a second time (for example "Turn system proxy off" and then quitting) no longer clears a
+  proxy you had configured before Shoji, such as a company proxy.
+- Removing the certificate now targets Shoji's own certificate by its fingerprint, so it can never remove a
+  different certificate with a similar name.
+
 ## [0.5.1] - 2026-10-23
 
 ### Changed

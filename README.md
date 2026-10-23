@@ -130,6 +130,23 @@ Set `dns.listen_host` and `proxy.listen_host` to `"0.0.0.0"` in `data\config.jso
 your phone's Wi-Fi DNS to your PC's IP address. For HTTPS filtering as well, set the Wi-Fi proxy to
 `<PC IP>:8080` and install the certificate from `http://shoji.blocker/cert`.
 
+## Uninstall
+
+1. Open the dashboard → **Setup → Remove Shoji from this PC → Restore my PC**. This turns off *Start with Windows*,
+   restores your proxy and DNS settings, removes the line Shoji added to Firefox's settings and removes Shoji's
+   certificate (choose **Yes** when Windows asks).
+2. Click **Quit Shoji**, then delete the Shoji folder and `%LOCALAPPDATA%\Shoji` (Windows app) or the `data\`
+   folder (source version).
+
+If Shoji no longer starts, you can do the same by hand: run `restore_network.bat`, run `reset_dns.bat` as
+administrator if you used `set_dns.bat`, remove **"Shoji Local Filtering CA (this PC only)"** from *Trusted Root
+Certification Authorities* in `certmgr.msc`, and turn Shoji off in *Settings → Apps → Startup*.
+
+## Privacy and code signing
+
+Shoji sends nothing to the Shoji project. See the [privacy policy](docs/PRIVACY.md) for what it keeps on your PC and
+which servers it connects to, and the [code signing policy](docs/CODE_SIGNING.md) for how releases are built.
+
 ## Known limitations
 
 - **YouTube's official mobile/TV apps** pin their certificates and serve ads from the same servers as

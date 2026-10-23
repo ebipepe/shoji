@@ -117,6 +117,11 @@ def restore_system_proxy() -> bool:
         return False
     import winreg
     saved = _load_saved()
+    if "proxy" not in saved:
+        # 元の設定はすでに戻してある。今の設定が Shoji を向いていなければ触らない
+        # （2 回目の復元で、利用者の会社のプロキシなどを消してしまわないように）
+        if not _points_to_local_shoji(get_system_proxy()):
+            return True
     prev = saved.pop("proxy", {"enabled": False, "server": "", "bypass": "", "pac": ""})
     with winreg.OpenKey(winreg.HKEY_CURRENT_USER, _INET_KEY, 0, winreg.KEY_SET_VALUE) as k:
         winreg.SetValueEx(k, "ProxyEnable", 0, winreg.REG_DWORD, 1 if prev.get("enabled") else 0)
@@ -129,6 +134,16 @@ def restore_system_proxy() -> bool:
     _save(saved)
     _refresh_wininet()
     return True
+
+
+def _points_to_local_shoji(p: dict) -> bool:
+    """Windows のプロキシ設定が、この PC の Shoji（PAC か固定のプロキシ）を向いているか"""
+    pac = (p.get("pac") or "").lower()
+    server = (p.get("server") or "").lower()
+    local = ("127.0.0.1", "localhost", "[::1]")
+    if pac and any(h in pac for h in local) and pac.endswith("/proxy.pac"):
+        return True
+    return bool(p.get("enabled")) and server.split(":")[0] in local
 
 
 def system_proxy_needs_restore() -> bool:
@@ -259,13 +274,35 @@ def _ca_subject() -> str:
         return ""
 
 
+def _ca_thumbprint() -> str:
+    try:
+        from cryptography import x509
+        from cryptography.hazmat.primitives import hashes
+        cert = x509.load_pem_x509_certificate((CERT_DIR / "mitmproxy-ca-cert.pem").read_bytes())
+        return cert.fingerprint(hashes.SHA1()).hex()
+    except Exception:  # noqa: BLE001
+        return ""
+
+
 def uninstall_ca_cert() -> tuple[bool, str]:
+    """この PC 用に作ったルート証明書だけを、指紋（SHA-1）で特定して信頼済みストアから取り除く。
+    名前で消すと、ほかのソフトが入れた同名の証明書まで消してしまうおそれがあるため"""
     if not IS_WIN:
         return False, t("win.only")
-    name = "Shoji Local Filtering CA (this PC only)" if _shoji_named_ca() else "mitmproxy"
-    r = subprocess.run(["certutil", "-user", "-delstore", "Root", name], capture_output=True,
-                       text=True, timeout=60, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
-    return r.returncode == 0, (r.stdout + r.stderr).strip()[:500]
+    thumb = _ca_thumbprint()
+    if not thumb:
+        return False, t("cert.missing")
+    if not _ca_cert_installed():
+        return True, t("undo.cert.none")
+    # Windows が「この証明書を削除しますか」と確認する
+    r = subprocess.run(["certutil", "-user", "-delstore", "Root", thumb], capture_output=True,
+                       text=True, timeout=120, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+    _cert_cache[0] = 0.0
+    if not _ca_cert_installed():
+        return True, t("undo.cert.ok")
+    if r.returncode == 0:
+        return False, t("undo.cert.cancel")
+    return False, (r.stdout + r.stderr).strip()[:500]
 
 
 # ------------------------------------------------------------------ 接続元プロセスの特定
@@ -343,12 +380,80 @@ def enable_firefox_windows_roots() -> int:
                 text = uj.read_text(encoding="utf-8") if uj.exists() else ""
                 if "security.enterprise_roots.enabled" not in text:
                     uj.write_text(text + ("\n" if text and not text.endswith("\n") else "")
-                                  + "// Shoji: Windows の証明書を信頼する\n" + line + "\n",
+                                  + _FF_MARK + "\n" + line + "\n",
                                   encoding="utf-8")
                 count += 1
             except OSError:
                 continue
     return count
+
+
+_FF_MARK = "// Shoji: Windows の証明書を信頼する"
+
+
+def strip_firefox_lines(text: str) -> tuple[str, bool]:
+    """user.js から、Shoji が足した印の行と、その直後の設定の行だけを取り除く"""
+    lines = text.splitlines(keepends=True)
+    out, i, changed = [], 0, False
+    while i < len(lines):
+        if lines[i].strip() == _FF_MARK:
+            changed = True
+            i += 1
+            if i < len(lines) and "security.enterprise_roots.enabled" in lines[i]:
+                i += 1
+            continue
+        out.append(lines[i])
+        i += 1
+    return "".join(out), changed
+
+
+def remove_firefox_windows_roots() -> int:
+    """enable_firefox_windows_roots で Shoji が追記した 2 行だけを取り除く。取り除いたプロファイル数を返す"""
+    appdata = os.environ.get("APPDATA")
+    if not IS_WIN or not appdata:
+        return 0
+    from pathlib import Path
+    count = 0
+    for base in ("Mozilla/Firefox/Profiles", "Waterfox/Profiles", "librewolf/Profiles", "Floorp/Profiles"):
+        root = Path(appdata) / base
+        if not root.is_dir():
+            continue
+        for prof in root.iterdir():
+            uj = prof / "user.js"
+            try:
+                if not uj.exists():
+                    continue
+                text, changed = strip_firefox_lines(uj.read_text(encoding="utf-8"))
+                if changed:
+                    uj.write_text(text, encoding="utf-8")
+                    count += 1
+            except OSError:
+                continue
+    return count
+
+
+def undo_system_changes() -> list[dict]:
+    """Shoji が Windows に加えた変更を元に戻す（アンインストールの前に使う）。
+    戻せたかどうかを項目ごとに返す: [{"item", "ok", "message"}]"""
+    out = []
+
+    def step(item, fn):
+        try:
+            ok, msg = fn()
+        except Exception as e:  # noqa: BLE001 — 1 項目の失敗で残りを止めない
+            ok, msg = False, str(e)[:300]
+        out.append({"item": item, "ok": bool(ok), "message": msg})
+
+    step("autostart", lambda: (set_autostart(False) or not get_autostart(), t("undo.auto.ok")))
+    step("proxy", lambda: (restore_system_proxy() or not system_proxy_needs_restore(), t("undo.proxy.ok")))
+    if dns_was_set_by_us() or (IS_WIN and system_dns_is_local()):
+        if is_admin():
+            step("dns", reset_system_dns)
+        else:
+            out.append({"item": "dns", "ok": False, "message": t("undo.dns.admin")})
+    step("firefox", lambda: (True, t("undo.ff.ok", n=remove_firefox_windows_roots())))
+    step("cert", uninstall_ca_cert)
+    return out
 
 
 # ------------------------------------------------------------------ 自動起動・多重起動防止

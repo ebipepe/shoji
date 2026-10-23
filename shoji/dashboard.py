@@ -5,14 +5,16 @@ from __future__ import annotations
 
 import csv
 import io
+import sys
 import threading
 import time
+from pathlib import Path
 
 from flask import Flask, Response, jsonify, request, send_file
 from werkzeug.serving import WSGIRequestHandler, make_server
 
 from . import __version__, i18n, lists, stats as stats_mod, winsys
-from .config import ASSETS_DIR, BUILTIN_HTTPS_EXCLUSIONS, DEFAULT_SHORTCUTS, STATS_DB, normalize_shortcut
+from .config import ASSETS_DIR, BUILTIN_HTTPS_EXCLUSIONS, DATA_DIR, DEFAULT_SHORTCUTS, STATS_DB, normalize_shortcut
 from .context import AppContext
 
 
@@ -266,6 +268,28 @@ def create_app(ctx: AppContext) -> Flask:
             ctx.passthrough_hosts.clear()
             ctx._save_passthrough()
         return jsonify({"ok": ok, "message": msg})
+
+    @app.post("/api/system/undo")
+    def sys_undo():
+        # Shoji が Windows に加えた変更を元に戻す（アンインストールの前に使う）
+        steps = winsys.undo_system_changes()
+        ctx.cert_verified = False
+        ctx.set_https_ready(False)
+        app_dir = Path(sys.executable).parent if getattr(sys, "frozen", False) else Path(__file__).resolve().parent.parent
+        return jsonify({"steps": steps, "data_dir": str(DATA_DIR), "app_dir": str(app_dir),
+                        "same_dir": DATA_DIR.resolve().is_relative_to(app_dir.resolve())})
+
+    @app.post("/api/system/open-data")
+    def open_data():
+        winsys.open_path(DATA_DIR)
+        return jsonify({"ok": True})
+
+    @app.post("/api/quit")
+    def quit_app():
+        # 応答を返してから終了する
+        if ctx.request_exit:
+            threading.Timer(0.5, ctx.request_exit).start()
+        return jsonify({"ok": bool(ctx.request_exit)})
 
     @app.post("/api/passthrough/clear")
     def clear_passthrough():

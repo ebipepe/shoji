@@ -407,6 +407,22 @@ def test_list_download_checks():
     assert lists.count_rules("! c\n# hosts\n[Adblock Plus 2.0]\n##.ad\n||a^\n") == 2
 
 
+def test_undo_helpers():
+    from shoji import winsys
+    mark = winsys._FF_MARK
+    text = 'user_pref("a", 1);\n' + mark + '\nuser_pref("security.enterprise_roots.enabled", true);\nuser_pref("b", 2);\n'
+    out, changed = winsys.strip_firefox_lines(text)
+    assert changed and out == 'user_pref("a", 1);\nuser_pref("b", 2);\n', out
+    # 利用者が自分で書いた同じ設定（印が無い）は残す
+    mine = 'user_pref("security.enterprise_roots.enabled", true);\n'
+    assert winsys.strip_firefox_lines(mine) == (mine, False)
+    # プロキシの復元は、Shoji を向いているときだけ行う
+    assert winsys._points_to_local_shoji({"pac": "http://127.0.0.1:8765/proxy.pac", "enabled": False})
+    assert winsys._points_to_local_shoji({"enabled": True, "server": "127.0.0.1:8080", "pac": ""})
+    assert not winsys._points_to_local_shoji({"enabled": True, "server": "proxy.corp.example:3128", "pac": ""})
+    assert not winsys._points_to_local_shoji({"enabled": False, "server": "", "pac": "http://wpad.corp/proxy.pac"})
+
+
 if __name__ == "__main__":
     for name, fn in list(globals().items()):
         if name.startswith("test_"):
