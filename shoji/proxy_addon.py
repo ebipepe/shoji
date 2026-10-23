@@ -22,7 +22,7 @@ from urllib.parse import parse_qs, urlsplit
 from mitmproxy import http, tls
 from mitmproxy.net.http.headers import infer_content_encoding
 
-from . import injector, lists, redirects, reqlog, scriptlets, winsys, youtube
+from . import injector, lists, redirects, reqlog, scriptlets, winsys, xcom, youtube
 from .config import BUILTIN_HTTPS_EXCLUSIONS, CERT_DIR, DEFAULT_SHORTCUTS, is_whitelisted
 from .context import AppContext
 from .i18n import lang, t
@@ -431,6 +431,8 @@ class ShojiAddon:
             need = True
         elif youtube.is_youtube_api(host, flow.request.path) and "json" in ct:
             need = True
+        elif xcom.is_x_api(host, flow.request.path) and "json" in ct:
+            need = True
         if not need:
             resp.stream = True
 
@@ -460,6 +462,17 @@ class ShojiAddon:
                     self.ctx.reqlog.add(reqlog.MODIFIED, flow.request.pretty_url, host, rtype="xmlhttprequest",
                                         page=meta.get("page_host", ""), cat="ad",
                                         detail=t("log.youtube", n=n))
+            return
+
+        if "json" in ct and xcom.is_x_api(host, flow.request.path):
+            if F["block_ads"] and resp.content:
+                new, n = xcom.prune_json_bytes(resp.content)
+                if n:
+                    resp.content = new
+                    stats.record("ad", "proxy", host, "xmlhttprequest", count=n, count_bytes=False,
+                                 detail=t("stat.x_promoted"))
+                    self.ctx.reqlog.add(reqlog.MODIFIED, flow.request.pretty_url, host, rtype="xmlhttprequest",
+                                        page=meta.get("page_host", ""), cat="ad", detail=t("log.x", n=n))
             return
 
         if "text/html" not in ct or resp.status_code != 200 or not resp.content:

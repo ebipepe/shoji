@@ -423,6 +423,39 @@ def test_undo_helpers():
     assert not winsys._points_to_local_shoji({"enabled": False, "server": "", "pac": "http://wpad.corp/proxy.pac"})
 
 
+def test_x_promoted_posts():
+    import json as _json
+    from shoji import xcom
+    def tweet(tid, promoted=False, text="hello"):
+        ic = {"itemType": "TimelineTweet", "tweet_results": {"result": {"rest_id": tid, "legacy": {"full_text": text}}}}
+        if promoted:
+            ic["promotedMetadata"] = {"advertiser_results": {}, "disclosureType": "NoDisclosure"}
+        return {"entryId": ("promoted-tweet-" if promoted else "tweet-") + tid, "sortIndex": tid,
+                "content": {"entryType": "TimelineTimelineItem", "itemContent": ic}}
+    home = {"data": {"home": {"home_timeline_urt": {"instructions": [
+        {"type": "TimelineAddEntries", "entries": [
+            tweet("1"), tweet("2", promoted=True), tweet("3", text="I got promoted at work!"),
+            {"entryId": "who-to-follow-4", "content": {"entryType": "TimelineTimelineModule", "items": [
+                {"entryId": "who-to-follow-4-user-5", "item": {"itemContent": {"itemType": "TimelineUser"}}},
+                {"entryId": "who-to-follow-4-user-6", "item": {"itemContent": {"itemType": "TimelineUser",
+                                                                               "promotedMetadata": {"x": 1}}}}]}},
+            {"entryId": "cursor-bottom-7", "content": {"entryType": "TimelineTimelineCursor", "value": "abc"}},
+        ]}]}}}}
+    raw = _json.dumps(home).encode()
+    new, n = xcom.prune_json_bytes(raw)
+    assert n == 2, n
+    entries = _json.loads(new)["data"]["home"]["home_timeline_urt"]["instructions"][0]["entries"]
+    assert [e["entryId"] for e in entries] == ["tweet-1", "tweet-3", "who-to-follow-4", "cursor-bottom-7"]
+    assert len(entries[2]["content"]["items"]) == 1
+    # 広告が無い応答は、そのまま（書き直さない）
+    plain = _json.dumps({"data": {"x": [tweet("8")]}}).encode()
+    assert xcom.prune_json_bytes(plain) == (plain, 0)
+    assert xcom.is_x_api("x.com", "/i/api/graphql/abc/HomeTimeline")
+    assert xcom.is_x_api("api.twitter.com", "/graphql/abc/TweetDetail")
+    assert not xcom.is_x_api("x.com", "/home")
+    assert not xcom.is_x_api("notx.com", "/i/api/graphql/abc/HomeTimeline")
+
+
 if __name__ == "__main__":
     for name, fn in list(globals().items()):
         if name.startswith("test_"):

@@ -36,6 +36,7 @@ Everything happens on your machine. Nothing is sent to any Shoji server, because
 |---|---|
 | **Ad blocking** | Network-level blocking with EasyList, AdGuard (incl. Japanese), uBlock Origin filters and more (≈650k rules). Blocked requests never leave your PC, so pages load faster and use less data. |
 | **YouTube video ads** | Removes the ad schedule from YouTube's player responses (the same approach as uBlock Origin's `json-prune`), drops ad cards from feeds and search, and auto-skips anything that slips through. |
+| **X promoted posts** | Removes promoted posts from X (Twitter) timelines, replies and search, whatever the label says in your language. |
 | **Tracker blocking** | EasyPrivacy / AdGuard Tracking Protection at URL and DNS level, plus **CNAME-cloaking** detection. |
 | **App ads** | A built-in DNS server (DNS-over-HTTPS upstream) blocks ad and tracker domains for every app, and for phones on your LAN if you point them at it. |
 | **Cosmetic filtering** | Hides ad slots with ~56k element-hiding rules, then **collapses the empty space** they leave behind. |

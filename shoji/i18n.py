@@ -132,6 +132,8 @@ MESSAGES: dict[str, dict[str, str]] = {
     "undo.cert.ok": {"ja": "Shoji の証明書を取り除きました", "en": "Shoji's certificate removed"},
     "undo.cert.none": {"ja": "Shoji の証明書は入っていませんでした", "en": "Shoji's certificate was not installed"},
     "undo.cert.cancel": {"ja": "証明書の削除がキャンセルされました。もう一度押して、Windows の確認で「はい」を選んでください", "en": "Removing the certificate was cancelled. Try again and choose \"Yes\" when Windows asks"},
+    "stat.x_promoted": {"ja": "X の広告ツイート", "en": "X promoted post"},
+    "log.x": {"ja": "X の広告ツイートを除去（{n} 件）", "en": "Removed X promoted posts ({n})"},
     "log.redirect": {"ja": "代替品を返した: {name}", "en": "Served a stand-in: {name}"},
     "log.page.procedural": {"ja": "拡張 CSS {n} 件", "en": "{n} extended CSS rules"},
     "log.conn_error": {"ja": "接続エラー", "en": "Connection error"},

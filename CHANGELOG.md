@@ -7,6 +7,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ## [Unreleased]
 
 ### Added
+- X (Twitter) promoted posts are removed from timelines, replies and search. Shoji drops the entries that X marks
+  as promoted in the data the page receives, so it works whatever the label says ("Ad", "広告", "Promoted").
 - "Remove Shoji from this PC" (Setup tab): one click undoes the changes Shoji made to Windows (Start with Windows,
   proxy, DNS, the Firefox setting, the root certificate), then shows which folders to delete and offers to quit.
 - Privacy policy (`docs/PRIVACY.md`), code signing policy (`docs/CODE_SIGNING.md`) and uninstall instructions in
