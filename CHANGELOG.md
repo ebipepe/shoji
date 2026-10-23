@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.5.2] - 2026-10-24
+
 ### Added
 - X (Twitter) promoted posts are removed from timelines, replies and search. Shoji drops the entries that X marks
   as promoted in the data the page receives, so it works whatever the label says ("Ad", "広告", "Promoted").
