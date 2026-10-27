@@ -542,6 +542,48 @@ def test_simple_host_rules_compact():
     assert e.dns_lookup("trk.example") and e.dns_lookup("ads.example")
 
 
+def test_browser_versions():
+    """ブラウザの版を User-Agent から読み、各社の公開情報の最新版と比べる"""
+    from shoji import browsers
+    edge = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) "
+            "Chrome/154.0.0.0 Safari/537.36 Edg/154.0.0.0")
+    chrome = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36"
+    ff = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:145.0) Gecko/20100101 Firefox/145.0"
+    assert browsers.parse_ua(edge) == ("edge", 154)
+    assert browsers.parse_ua(chrome) == ("chrome", 156)
+    assert browsers.parse_ua(ff) == ("firefox", 145)
+    assert browsers.parse_ua(chrome + " OPR/120.0.0.0") is None                       # Opera は対象外
+    assert browsers.parse_ua(chrome.replace("Windows NT 10.0; Win64; x64", "Linux; Android 14")) is None
+    data = {
+        "chrome": {"versions": [{"version": "156.0.7900.12"}, {"version": "155.0.7800.99"}]},
+        "edge": [{"Product": "Beta", "Releases": [{"Platform": "Windows", "ProductVersion": "157.0.1.0"}]},
+                 {"Product": "Stable", "Releases": [{"Platform": "MacOS", "ProductVersion": "157.0.0.1"},
+                                                    {"Platform": "Windows", "ProductVersion": "156.0.4314.50"}]}],
+        "firefox": {"LATEST_FIREFOX_VERSION": "145.0.2", "FIREFOX_ESR": "140.5.0esr"},
+    }
+    asked = []
+
+    def fetch(url):
+        name = next(k for k, v in browsers.SOURCES.items() if v == url)
+        asked.append(name)
+        return data[name]
+    w = browsers.BrowserWatch(fetch)
+    assert w.report() == [] and w.needs_refresh()
+    for ua in (edge, ff, edge):
+        w.note(ua)
+    w.refresh()
+    assert sorted(asked) == ["edge", "firefox"]                  # 使っていない Chrome は問い合わせない
+    rep = {r["name"]: r for r in w.report()}
+    assert rep["edge"]["outdated"] and rep["edge"]["latest"] == 156 and rep["edge"]["major"] == 154
+    assert not rep["firefox"]["outdated"]
+    assert not w.needs_refresh()
+    w.note(edge.replace("154.0.0.0", "156.0.0.0"))               # 更新した
+    assert not {r["name"]: r for r in w.report()}["edge"]["outdated"]
+    w.note(chrome)                                                # 新しいブラウザを見かけたら、問い合わせの対象に
+    assert "chrome" in w.seen
+    assert browsers.latest_from("edge", {"bad": 1}) is None and browsers.latest_from("chrome", []) is None
+
+
 if __name__ == "__main__":
     for name, fn in list(globals().items()):
         if name.startswith("test_"):

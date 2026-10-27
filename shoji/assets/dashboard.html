@@ -117,6 +117,7 @@ code{font-family:ui-monospace,Consolas,monospace;font-size:12.5px;background:var
 </nav>
 <main>
 <div class="card" id="deps-warn" hidden style="border-color:var(--bad);margin-bottom:12px"></div>
+<div class="card" id="browser-warn" hidden style="border-color:var(--warn);margin-bottom:12px"></div>
 <!-- ================= 統計 ================= -->
 <section id="stats" class="active">
   <div class="row">
@@ -462,6 +463,11 @@ async function loadStatus() {
   dw.hidden = !deps.length;
   if (deps.length) dw.innerHTML = `<b class="ng">${esc(t('deps.title'))}</b><p class="small" style="margin:6px 0 0">${esc(t('deps.desc'))}</p>` +
     `<p class="small muted" style="margin:6px 0 0">${deps.map(d => esc(`${d.name} ${d.installed || '—'} → ${d.required}`)).join(', ')}</p>`;
+  const bw = $('#browser-warn'), old = (s.browsers || []).filter(b => b.outdated);
+  bw.hidden = !old.length;
+  if (old.length) bw.innerHTML = `<b style="color:var(--warn)">${esc(t('browser.title'))}</b>` +
+    old.map(b => `<p class="small" style="margin:6px 0 0">${esc(t('browser.line', {name: b.label, major: b.major, latest: b.latest}))}</p>`).join('') +
+    `<p class="small muted" style="margin:6px 0 0">${esc(t('browser.how'))}</p>`;
   $('#auto-toggle').checked = !!s.autostart;
   $('#st-auto').innerHTML = s.autostart ? `<span class="ok">${t('st.on')}</span>` : `<span class="muted">${t('st.off')}</span>`;
   $('#pause-btn').textContent = t(s.paused ? 'resume' : 'pause');
@@ -584,7 +590,7 @@ function drawChart(points) {
 }
 
 /* ---------- 設定 ---------- */
-const FEATURES = ['block_ads', 'youtube_ads', 'block_trackers', 'block_malware', 'dns_filtering', 'cname_uncloaking', 'https_filtering',
+const FEATURES = ['block_ads', 'youtube_ads', 'block_trackers', 'block_malware', 'browser_update_check', 'dns_filtering', 'cname_uncloaking', 'https_filtering',
   'cosmetic', 'scriptlets', 'collapse_space', 'anti_reinsertion', 'block_popups', 'disable_amp', 'hide_affiliate_banners'];
 const STEALTH = ['enabled', 'strip_tracking_params', 'hide_search_queries', 'trim_referer', 'block_third_party_cookies', 'send_dnt',
   'strip_client_hints', 'remove_x_client_data', 'hide_user_agent', 'block_webrtc_leak', 'fingerprint_protection'];

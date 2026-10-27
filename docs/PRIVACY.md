@@ -1,6 +1,6 @@
 # Privacy policy
 
-*Last updated: 2026-10-24* — [日本語は下にあります](#プライバシーポリシー日本語)
+*Last updated: 2026-10-28* — [日本語は下にあります](#プライバシーポリシー日本語)
 
 Shoji is a filter that runs entirely on your own PC. It has no accounts, no telemetry, no analytics, no crash
 reporting and no update checks. There is no Shoji server, so nothing about you or your browsing is sent to the
@@ -30,6 +30,12 @@ Besides passing your own traffic on to the sites you visit, Shoji connects only 
 - **A DNS resolver**, only if you use Shoji's DNS filter (`set_dns.bat`, or phones on your network): DNS questions
   that are not blocked are forwarded over DNS-over-HTTPS to Cloudflare (`cloudflare-dns.com`), with Google DNS
   (`8.8.8.8`) as a fallback. You can change the resolver in `config.json` (`dns.upstream`).
+- **Browser vendors' public version information**, only for the browsers you use (about once a day), to tell you
+  when your browser is out of date: `versionhistory.googleapis.com` (Chrome), `edgeupdates.microsoft.com` (Edge) and
+  `product-details.mozilla.org` (Firefox). Nothing about you or your browsing is sent; these servers see an ordinary
+  request from your IP address with the user agent `Shoji/<version>`. Turn it off with *Features → Browser update
+  check*. To know which browser you use, Shoji reads the browser name and major version from your own requests,
+  on your PC only.
 
 ## HTTPS filtering
 
@@ -53,7 +59,7 @@ Questions about privacy: [open an issue](https://github.com/ebipepe/shoji/issues
 
 # プライバシーポリシー（日本語）
 
-*最終更新: 2026-10-24*
+*最終更新: 2026-10-28*
 
 Shoji は、あなたの PC の中だけで動くフィルタです。アカウント、利用状況の送信（テレメトリー）、アクセス解析、
 クラッシュの報告、更新の確認は、どれもありません。Shoji 用のサーバーもないので、あなたやあなたの閲覧についての
@@ -74,7 +80,7 @@ Shoji は、あなたの PC の中だけで動くフィルタです。アカウ�
 
 ## Shoji 自身が行う通信
 
-あなた自身の通信を、見ようとしているサイトへ中継するほかに、Shoji が自分から接続するのは次の 2 つだけです。
+あなた自身の通信を、見ようとしているサイトへ中継するほかに、Shoji が自分から接続するのは次の 3 つだけです。
 
 - **フィルタリストの配布元**: 有効にしたリストを、1 日に 1 回ほどダウンロードします。接続先は
   `easylist.to`、`filters.adtidy.org`、`ublockorigin.github.io`、`adguardteam.github.io`、`malware-filter.gitlab.io`、
@@ -83,6 +89,11 @@ Shoji は、あなたの PC の中だけで動くフィルタです。アカウ�
 - **DNS の問い合わせ先**: Shoji の DNS フィルタを使う場合だけです（`set_dns.bat` を使ったとき、または同じネットワークの
   スマホなどから使うとき）。ブロックしなかった DNS の問い合わせを、DNS-over-HTTPS で Cloudflare（`cloudflare-dns.com`）に
   転送します。つながらないときは Google の DNS（`8.8.8.8`）を使います。問い合わせ先は `config.json` の `dns.upstream` で変えられます。
+- **ブラウザの各社の公開情報**: 使っているブラウザが古いままなら知らせるために、使っているブラウザの分だけ、1 日に 1 回ほど
+  最新の版を確かめます。接続先は `versionhistory.googleapis.com`（Chrome）、`edgeupdates.microsoft.com`（Edge）、
+  `product-details.mozilla.org`（Firefox）です。あなたや閲覧についての情報は送りません。配布元のサーバーには、あなたの IP アドレスからの
+  普通の問い合わせとして見えます（ユーザーエージェントは `Shoji/<バージョン>`）。「機能設定」→「ブラウザの更新の確認」でオフにできます。
+  どのブラウザを使っているかは、あなた自身の通信に含まれるブラウザの名前と大きい版から、PC の中だけで読み取ります。
 
 ## HTTPS フィルタについて
 

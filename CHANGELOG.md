@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+- **ClickFix protection.** Pages that secretly copy a dangerous command (PowerShell, mshta, `cmd /c`, …) to the
+  clipboard and tell you to paste it into the Run box ("I'm not a robot", "press Win+R") are stopped: the clipboard
+  gets a harmless notice instead and a warning is shown. Commands shown on the page with a copy button
+  (documentation sites) and your own Ctrl+C are not affected.
+- **Browser update check.** Shoji tells you on the dashboard when the Edge, Chrome or Firefox you use is older than
+  the latest version, checked once a day from the vendors' public version information (can be turned off). Only the
+  major version can be compared, because browsers no longer send the full version.
+
 ### Changed
 - Much lower memory use. With the default and annoyance lists (about 850,000 network rules), Shoji used about
   1.3 GB; it now uses about 0.5 GB, and loading the lists takes about half as long. Rules that only name a host

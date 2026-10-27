@@ -7,6 +7,7 @@ import json
 import threading
 import time
 
+from .browsers import BrowserWatch
 from .config import DATA_DIR, Config, is_whitelisted
 from .filters import FilterEngine
 from .reqlog import RequestLog
@@ -37,6 +38,8 @@ class AppContext:
         self.status: dict = {"proxy": "stopped", "dns": "stopped", "lists": None}
         # ソース版で、固定の版より古いまま・入っていない部品（depcheck）
         self.deps_outdated: list[dict] = []
+        # 使われているブラウザの版と最新の版（browsers）
+        self.browsers = BrowserWatch()
         # 一時停止中はフィルタを一切かけず、そのまま通す
         self.paused = False
         self.on_pause_change: list = []

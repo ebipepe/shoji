@@ -103,6 +103,7 @@ def create_app(ctx: AppContext) -> Flask:
             "passthrough_hosts": sorted(ctx.passthrough_hosts),
             "untrusting_apps": sorted(ctx.untrusting_apps),
             "deps_outdated": ctx.deps_outdated,
+            "browsers": ctx.browsers.report() if cfg["features"].get("browser_update_check", True) else [],
             "builtin_exclusions": list(BUILTIN_HTTPS_EXCLUSIONS),
             "proxy_addr": f"{p['listen_host']}:{p['listen_port']}",
             "dns_addr": f"{cfg['dns']['listen_host']}:{cfg['dns']['listen_port']}",
