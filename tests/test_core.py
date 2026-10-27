@@ -115,7 +115,8 @@ def test_inject_and_csp():
 
 def test_builtin_https_exclusions():
     from shoji.config import BUILTIN_HTTPS_EXCLUSIONS, DEFAULT_CONFIG, is_whitelisted
-    for host in ("www.paypal.com", "secure.chase.com", "s10.kabu.co.jp", "mabanque.bnpparibas", "claude.ai"):
+    for host in ("www.paypal.com", "secure.chase.com", "s10.kabu.co.jp", "mabanque.bnpparibas", "claude.ai",
+                 "storeedgefd.dsx.mp.microsoft.com", "cdn.winget.microsoft.com"):
         assert is_whitelisted(host, BUILTIN_HTTPS_EXCLUSIONS), host
     for host in ("www.youtube.com", "example.com", "notpaypal.com"):
         assert not is_whitelisted(host, BUILTIN_HTTPS_EXCLUSIONS), host
@@ -486,6 +487,38 @@ def test_release_locks():
     assert not missing, f"requirements-lock.txt に無い部品: {sorted(missing)}（python packaging/update_locks.py を実行）"
     assert "pyinstaller" in pinned("packaging/build-lock.txt")
     assert "pip-licenses" in pinned("packaging/licenses-lock.txt")
+
+
+def test_depcheck():
+    """ソース版で、固定の版より古い部品・入っていない部品を見つける"""
+    from shoji import depcheck
+    lock = """# header
+brotli==1.2.1 \\
+    --hash=sha256:aa \\
+    --hash=sha256:bb
+    # via mitmproxy
+certifi==2026.10.23 \\
+    --hash=sha256:cc
+mitmproxy==12.3.1 \\
+    --hash=sha256:dd
+pydivert==3.1.3 ; sys_platform == 'never' \\
+    --hash=sha256:ee
+typing-extensions==4.16.0 ; python_full_version < '3.0' \\
+    --hash=sha256:ff
+cffi==2.1.1 ; python_full_version >= '3.0' or implementation_name != 'PyPy' \\
+    --hash=sha256:gg
+"""
+    have = {"brotli": "1.2.0", "certifi": "2026.10.23", "mitmproxy": "12.10.0", "cffi": None}
+    got = depcheck.outdated(lock, have.get)
+    assert [(g["name"], g["installed"]) for g in got] == [("brotli", "1.2.0"), ("cffi", None)], got
+    assert depcheck.describe(got) == "brotli 1.2.0 → 1.2.1, cffi - → 2.1.1"
+    # 版の比べ方: 末尾の 0 は無視、数字以外を含む版は比べない
+    assert depcheck._version_key("1.2.0") == depcheck._version_key("1.2") and depcheck._version_key("1.0rc1") is None
+    assert depcheck._marker_applies("not (sys_platform == 'never') and (os_name == 'nt' or os_name != 'nt')")
+    assert depcheck._marker_applies("weird_marker ~= 'x'")      # 分からない形は対象にする
+    # 本物の requirements-lock.txt も読める
+    root = Path(__file__).resolve().parent.parent
+    assert len(depcheck.read_lock((root / "requirements-lock.txt").read_text(encoding="utf-8"))) >= 40
 
 
 if __name__ == "__main__":

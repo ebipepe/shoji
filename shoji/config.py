@@ -181,6 +181,8 @@ BUILTIN_HTTPS_EXCLUSIONS: tuple[str, ...] = (
     "apple.com", "icloud.com", "mzstatic.com",
     "windowsupdate.com", "update.microsoft.com", "login.microsoftonline.com", "login.live.com",
     "smartscreen.microsoft.com", "accounts.google.com",
+    # Microsoft Store・winget（接続後に証明書を独自に確かめるので、中継すると失敗する）
+    "mp.microsoft.com", "winget.microsoft.com", "winget.azureedge.net",
     # パスワード管理・ストレージ
     "dropbox.com", "1password.com", "bitwarden.com", "lastpass.com", "dashlane.com", "keepersecurity.com",
     # 日本の銀行・証券・決済

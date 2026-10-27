@@ -35,6 +35,8 @@ class AppContext:
         self.untrusting_file = DATA_DIR / "untrusting_apps.json"
         self.untrusting_apps: set[str] = self._load_json_set(self.untrusting_file)
         self.status: dict = {"proxy": "stopped", "dns": "stopped", "lists": None}
+        # ソース版で、固定の版より古いまま・入っていない部品（depcheck）
+        self.deps_outdated: list[dict] = []
         # 一時停止中はフィルタを一切かけず、そのまま通す
         self.paused = False
         self.on_pause_change: list = []

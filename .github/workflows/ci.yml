@@ -35,3 +35,27 @@ jobs:
         run: node --check shoji/assets/content.js
       - name: Unit tests
         run: python tests/test_core.py
+
+  # install.bat (source version on Windows): installs the pinned versions from requirements-lock.txt
+  install-script:
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.12", "3.13"]
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Run install.bat
+        shell: cmd
+        run: |
+          call install.bat < NUL > install.log 2>&1
+          type install.log
+          if not exist .venv\shoji-installed-lock.txt exit /b 1
+          findstr /c:"requirements.txt の指定" install.log && (echo install.bat fell back to requirements.txt & exit /b 1)
+          exit /b 0
+      - name: Installed versions match requirements-lock.txt
+        shell: cmd
+        run: .venv\Scripts\python -c "from shoji import depcheck; d = depcheck.check(); print(d); assert not d"

@@ -22,7 +22,7 @@ import time
 import traceback
 import webbrowser
 
-from shoji import __version__, i18n, lists, winsys
+from shoji import __version__, depcheck, i18n, lists, winsys
 from shoji.config import CERT_DIR, DATA_DIR, LOG_PATH, Config
 from shoji.context import AppContext
 from shoji.filters import FilterEngine
@@ -204,6 +204,9 @@ def main():
     i18n.configure(config.get)
     stats = Stats()
     ctx = AppContext(config, stats, FilterEngine())
+    ctx.deps_outdated = depcheck.check()
+    if ctx.deps_outdated:
+        print(i18n.t("msg.deps_outdated", items=depcheck.describe(ctx.deps_outdated)))
 
     # まず内蔵ルール＋手元のリストで即座に起動し、ダウンロードは裏で行う
     lists.load_engine(ctx)

@@ -6,7 +6,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+- Source version: Shoji checks at startup that the installed packages are not older than `requirements-lock.txt`
+  and shows a warning in the log and on the dashboard. `start.bat` asks you to run `install.bat` when an update
+  changed the package versions (`git pull` alone does not update `.venv`).
+
+### Changed
+- `install.bat` installs the same pinned, hash-checked versions as the Windows app (falling back to
+  `requirements.txt` if they cannot be installed), and stops if Shoji is running, because Windows locks the files
+  of a running Shoji and the update fails ("Access is denied").
+
 ### Fixed
+- Microsoft Store and winget (`mp.microsoft.com`, `winget.microsoft.com`, `winget.azureedge.net`) are no longer
+  decrypted. They check the certificate after connecting, so `winget upgrade` failed with 0x8a15005e while Shoji
+  was running.
 - `THIRD_PARTY_LICENSES.txt` now also lists `wcwidth`, which is installed with mitmproxy's urwid. pip-licenses hides
   it by default because it uses the package itself. It is not part of `Shoji.exe`, so earlier releases were not
   missing a required license; it is listed for completeness. (The v0.5.3 notes said this was already fixed; it was not.)

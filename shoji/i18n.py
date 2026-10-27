@@ -161,6 +161,7 @@ MESSAGES: dict[str, dict[str, str]] = {
     "msg.dns_up": {"ja": "[dns] DNS フィルタ起動: {addrs}", "en": "[dns] DNS filter started: {addrs}"},
     "msg.dns_port": {"ja": "[dns] ポート 53 が使用中の可能性があります（インターネット接続の共有 / Hyper-V 等）。config.json の dns.listen_port を変更するか --no-dns で起動してください。",
                      "en": "[dns] Port 53 may be in use (Internet Connection Sharing, Hyper-V, …). Change dns.listen_port in config.json or start with --no-dns."},
+    "msg.deps_outdated": {"ja": "[deps] 部品が古いままです（入っている版 → 必要な版）: {items}。Shoji を終了してから install.bat を実行してください", "en": "[deps] Some packages are out of date (installed → required): {items}. Quit Shoji, then run install.bat"},
     "msg.unclean": {"ja": "[system] 前回は設定を戻さずに終了していました（元の設定は保存済みです）", "en": "[system] Last run ended without restoring settings (the originals are saved)"},
     "msg.pac": {"ja": "自動構成スクリプト", "en": "proxy auto-config"},
     "msg.static": {"ja": "固定設定", "en": "fixed proxy"},

@@ -76,6 +76,7 @@ textarea{width:100%;min-height:340px;font-family:ui-monospace,Consolas,monospace
 .step{display:flex;gap:14px;padding:14px 0;border-bottom:1px solid var(--border)}
 .step .n{flex:0 0 28px;height:28px;border-radius:50%;background:var(--surface-2);border:1px solid var(--border);display:grid;place-items:center;font-weight:600}
 .ok{color:var(--good)} .ng{color:var(--bad)}
+[hidden]{display:none!important}
 code{font-family:ui-monospace,Consolas,monospace;font-size:12.5px;background:var(--surface-2);padding:1px 5px;border-radius:4px}
 #toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--text);color:var(--bg);padding:8px 16px;border-radius:8px;display:none;font-size:13px}
 .log td{font-size:12px} .log td.d{color:var(--muted);max-width:420px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -115,6 +116,7 @@ code{font-family:ui-monospace,Consolas,monospace;font-size:12.5px;background:var
   <button data-tab="setup" data-i="tab.setup"></button>
 </nav>
 <main>
+<div class="card" id="deps-warn" hidden style="border-color:var(--bad);margin-bottom:12px"></div>
 <!-- ================= 統計 ================= -->
 <section id="stats" class="active">
   <div class="row">
@@ -456,6 +458,10 @@ async function loadStatus() {
   const mark = ok => ok ? `<span class="ok">${t('st.done')}</span>` : `<span class="ng">${t('st.notyet')}</span>`;
   $('#st-cert').innerHTML = mark(s.cert_installed) + (s.https_ready ? '' : ` <span class="ng">— ${esc(s.https_problem || t('st.https.off'))}</span>`);
   $('#st-proxy').innerHTML = mark(s.system_proxy) + (s.system_proxy ? ` <span class="muted small">(${t(s.proxy_mode === 'pac' ? 'st.pac' : 'st.static')})</span>` : '');
+  const dw = $('#deps-warn'), deps = s.deps_outdated || [];
+  dw.hidden = !deps.length;
+  if (deps.length) dw.innerHTML = `<b class="ng">${esc(t('deps.title'))}</b><p class="small" style="margin:6px 0 0">${esc(t('deps.desc'))}</p>` +
+    `<p class="small muted" style="margin:6px 0 0">${deps.map(d => esc(`${d.name} ${d.installed || '—'} → ${d.required}`)).join(', ')}</p>`;
   $('#auto-toggle').checked = !!s.autostart;
   $('#st-auto').innerHTML = s.autostart ? `<span class="ok">${t('st.on')}</span>` : `<span class="muted">${t('st.off')}</span>`;
   $('#pause-btn').textContent = t(s.paused ? 'resume' : 'pause');
