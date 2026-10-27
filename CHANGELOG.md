@@ -18,6 +18,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   needed for everyday use (.hta, .js, .vbs, .lnk, .scr, .bat, .ps1, …) are replaced by a warning page. "Download
   anyway" is confirmed on Shoji's own page (the site cannot press it) and lets that file through once. Scripts that
   pages load, .exe/.msi and other downloads are not affected.
+- **Notification prompts are stopped.** "Show notifications?" requests made as soon as a page opens (a common start
+  of scams that keep showing fake virus alerts) are answered "not decided" without a prompt. Prompts after you
+  press a site's own button still appear unless the page says something like "click Allow if you are not a robot".
+  Sites you already allowed are not affected (can be turned off).
 
 ### Changed
 - Much lower memory use. With the default and annoyance lists (about 850,000 network rules), Shoji used about

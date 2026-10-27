@@ -9,11 +9,63 @@
  *    「Win+R を押して貼り付けてください」と実行させる手口。ページ自身による書き込みだけを見て、
  *    コマンドがページに表示されていない（隠されている）か、誘い文句があるときだけ止める。
  *    止めたときは、貼り付けても何も起きない注意書きをクリップボードに入れる。
+ * 3. 通知の許可を求める表示（設定 block_notification_prompts）
+ *    偽のウイルス警告などをデスクトップに出し続ける詐欺は、まず「通知を許可」させる。
+ *    ページを開いただけで出る許可の要求は止める。利用者がサイトのボタンを押したときは出す
+ *    （ただし「許可を押してロボットでないことを確認」のような誘い文句があれば止める）。
+ *    すでに許可しているサイトには何もしない。
  */
 (function (CFG) {
   'use strict';
-  if (!CFG || !CFG.f || CFG.f.block_malware === false || window.__shojiGuard) return;
+  if (!CFG || !CFG.f || window.__shojiGuard) return;
   window.__shojiGuard = true;
+
+  /* ---------- 通知の許可を求める表示 ---------- */
+  (function () {
+    var N = window.Notification;
+    if (CFG.f.block_notification_prompts === false || !N || N.permission !== 'default') return;
+    var LURE = /(click|tap|press|select)\s*["“']?allow|allow\s+to\s+(continue|verify|watch|download|confirm)|not a robot|「許可」|許可(を|ボタン).{0,12}(押|クリック|タップ)|ロボットでない/i;
+    var reported = false;
+    function userAsked() {
+      var act = navigator.userActivation;
+      if (!act || !act.isActive) return false;
+      var text = '';
+      try { text = (document.title || '') + ' ' + (document.body ? document.body.innerText : '').slice(0, 20000); } catch (e) {}
+      return !LURE.test(text);
+    }
+    function note() {
+      if (reported) return;
+      reported = true;
+      try {
+        var body = JSON.stringify({ host: location.hostname, counts: { popup: 1, _d: ['popup:' + (CFG.lang === 'ja' ? '通知の許可の要求を止めました' : 'Notification permission request stopped')] } });
+        if (!navigator.sendBeacon || !navigator.sendBeacon(CFG.magic + '/report', body)) fetch(CFG.magic + '/report', { method: 'POST', body: body, mode: 'no-cors' });
+      } catch (e) {}
+    }
+    var orig = N.requestPermission;
+    if (typeof orig === 'function') {
+      try {
+        N.requestPermission = function (cb) {
+          if (N.permission !== 'default' || userAsked()) return orig.apply(N, arguments);
+          note();
+          if (typeof cb === 'function') { try { cb('default'); } catch (e) {} }
+          return Promise.resolve('default');
+        };
+      } catch (e) {}
+    }
+    var PM = window.PushManager;
+    if (PM && PM.prototype && typeof PM.prototype.subscribe === 'function') {
+      var sub = PM.prototype.subscribe;
+      try {
+        PM.prototype.subscribe = function () {
+          if (N.permission !== 'default' || userAsked()) return sub.apply(this, arguments);
+          note();
+          return Promise.reject(new DOMException('Registration failed - permission denied', 'NotAllowedError'));
+        };
+      } catch (e) {}
+    }
+  })();
+
+  if (CFG.f.block_malware === false) return;
 
   var MAGIC = CFG.magic;
   var TEXT = {

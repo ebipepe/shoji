@@ -83,6 +83,7 @@ DEFAULT_CONFIG: dict = {
         "dns_filtering": True,          # DNS フィルタリング（アプリ内広告）
         "cname_uncloaking": True,       # CNAME 偽装トラッカー検出
         "block_malware": True,          # 危険なサイト（マルウェア・フィッシング・採掘）と詐欺ページの対策
+        "block_notification_prompts": True,  # ページを開いただけで出る「通知を許可」の要求を止める
         "download_guard": True,         # 危険な種類のファイル（.hta・.js・.lnk など）のダウンロード前に確認
         "browser_update_check": True,   # ブラウザが古いままなら知らせる（各社の公開情報から最新の版を確認）
     },
