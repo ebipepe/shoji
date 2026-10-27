@@ -7,6 +7,7 @@ import json
 import threading
 import time
 
+from .apps import AppActivity
 from .browsers import BrowserWatch
 from .config import DATA_DIR, Config, is_whitelisted
 from .filters import FilterEngine
@@ -47,6 +48,7 @@ class AppContext:
         self.request_exit = None     # 終了を要求する関数（main が設定する）
         # フィルタリングログ（メモリ上のみ。ディスクには保存しない）
         self.reqlog = RequestLog()
+        self.apps = AppActivity()       # アプリごとの通信（メモリ上だけ）
 
     @property
     def cfg(self) -> dict:

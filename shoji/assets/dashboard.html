@@ -109,6 +109,7 @@ code{font-family:ui-monospace,Consolas,monospace;font-size:12.5px;background:var
 <nav id="tabs">
   <button data-tab="stats" class="active" data-i="tab.stats"></button>
   <button data-tab="log" data-i="tab.log"></button>
+  <button data-tab="apps" data-i="tab.apps"></button>
   <button data-tab="settings" data-i="tab.settings"></button>
   <button data-tab="stealth" data-i="tab.stealth"></button>
   <button data-tab="allow" data-i="tab.allow"></button>
@@ -167,6 +168,20 @@ code{font-family:ui-monospace,Consolas,monospace;font-size:12.5px;background:var
     <table class="log" id="log-table">
       <colgroup><col style="width:74px"><col style="width:104px"><col style="width:90px"><col><col style="width:30%"><col style="width:84px"></colgroup>
       <thead><tr><th data-i="col.time"></th><th data-i="log.col.result"></th><th data-i="col.kind"></th><th data-i="log.col.url"></th><th data-i="log.col.rule"></th><th></th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ================= アプリ ================= -->
+<section id="apps">
+  <div class="row">
+    <p class="muted small" style="flex:1;margin:0" data-i="apps.note"></p>
+    <button class="btn" id="apps-clear" data-i="clear"></button>
+  </div>
+  <div class="card" style="padding:0;overflow:auto">
+    <table class="log" id="apps-table">
+      <thead><tr><th data-i="apps.col.app"></th><th data-i="apps.col.requests" style="text-align:right"></th><th data-i="apps.col.blocked" style="text-align:right"></th><th data-i="apps.col.hosts"></th><th data-i="apps.col.last"></th></tr></thead>
       <tbody></tbody>
     </table>
   </div>
@@ -360,7 +375,24 @@ document.querySelectorAll('#tabs button').forEach(b => b.onclick = () => {
   if (b.dataset.tab === 'filters') loadFilters();
   if (b.dataset.tab === 'log') pollLog();
   if (b.dataset.tab === 'allow') loadRecentSites();
+  if (b.dataset.tab === 'apps') loadApps();
 });
+
+/* ---------- アプリごとの通信 ---------- */
+async function loadApps() {
+  const r = await api('/api/apps');
+  const rows = (r.apps || []).map(a => {
+    const hosts = a.top.map(([h, n]) => `${esc(h)} <span class="muted">${fmt(n)}</span>`).join('<br>');
+    const blocked = a.top_blocked.length ? `<div class="small" style="margin-top:4px;color:var(--bad)">${t('apps.blocked.top')}: ${a.top_blocked.slice(0, 4).map(([h]) => esc(h)).join(', ')}</div>` : '';
+    return `<tr><td><b>${esc(a.app)}</b></td><td style="text-align:right">${fmt(a.requests)}</td>` +
+      `<td style="text-align:right">${a.blocked ? `<span class="ng">${fmt(a.blocked)}</span>` : '0'}</td>` +
+      `<td class="small">${hosts}${a.hosts > a.top.length ? `<div class="muted">${t('apps.more', {n: fmt(a.hosts - a.top.length)})}</div>` : ''}${blocked}</td>` +
+      `<td class="small muted">${new Date(a.last * 1000).toLocaleTimeString(LOCALE)}</td></tr>`;
+  });
+  $('#apps-table tbody').innerHTML = rows.join('') ||
+    `<tr><td class="muted" colspan="5">${t(r.supported ? 'apps.empty' : 'apps.unsupported')}</td></tr>`;
+}
+$('#apps-clear').onclick = async () => { await api('/api/apps/clear', {method: 'POST'}); loadApps(); };
 
 /* ---------- フィルタリングログ ---------- */
 const LOG = {items: [], last: 0, action: '', q: '', enabled: true, timer: null};
@@ -745,7 +777,8 @@ $('#dns-off').onclick = async () => { const r = await api('/api/system/dns', {on
 
 applyLang((navigator.language || 'en').toLowerCase().startsWith('ja') ? 'ja' : 'en');
 loadStatus().then(() => { loadConfig(); loadReport(); });
-setInterval(() => { loadStatus(); if ($('#stats').classList.contains('active')) loadReport(); }, 5000);
+setInterval(() => { loadStatus(); if ($('#stats').classList.contains('active')) loadReport();
+  if ($('#apps').classList.contains('active')) loadApps(); }, 5000);
 window.addEventListener('resize', () => loadReport());
 </script>
 </body>

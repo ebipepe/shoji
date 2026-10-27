@@ -97,6 +97,7 @@ class ShojiAddon:
         self._client_proc: dict = {}
         self._flag_ver = ""
         self._downloads = downloads.DownloadGate()
+        self._conn_app: dict = {}      # 接続（client.id） -> 接続してきたアプリのプロセス名
 
     # ------------------------------------------------------------ 補助
     @property
@@ -159,6 +160,26 @@ class ShojiAddon:
         flow.response = http.Response.make(status, body, headers)
 
     # ------------------------------------------------------------ CONNECT / TLS
+    # ------------------------------------------------------------ 接続してきたアプリ
+    async def client_connected(self, client) -> None:
+        """接続してきたアプリ（プロセス名）を調べておく（Windows のみ）。アプリごとの通信と、証明書を
+        受け付けないアプリの判定に使う"""
+        if not winsys.IS_WIN or not client.peername:
+            return
+        try:
+            self._conn_app[client.id] = await asyncio.get_running_loop().run_in_executor(
+                None, winsys.process_for_client, client.peername[1], int(self.ctx.cfg["proxy"]["listen_port"]))
+        except Exception:  # noqa: BLE001
+            self._conn_app[client.id] = ""
+        if len(self._conn_app) > 20000:
+            self._conn_app.clear()
+
+    def client_disconnected(self, client) -> None:
+        self._conn_app.pop(client.id, None)
+
+    def _app_of(self, flow) -> str:
+        return self._conn_app.get(flow.client_conn.id, "") if flow.client_conn else ""
+
     def http_connect(self, flow: http.HTTPFlow) -> None:
         host = flow.request.host.lower()
         if host == MAGIC_HOST or self.ctx.paused or not self._passthrough(host) or self.ctx.is_allowed(host):
@@ -172,11 +193,13 @@ class ShojiAddon:
                                 rule=self.engine.dns_rule_text(host),
                                 detail=t("log.connect"))
             flow.response = http.Response.make(403, b"", {"X-Shoji": "blocked"})
+            self.ctx.apps.record(self._app_of(flow), host, blocked=True)
 
     async def tls_clienthello(self, data: tls.ClientHelloData) -> None:
         sni = (data.client_hello.sni or (data.context.server.address or ("",))[0] or "").lower()
         if sni and self._passthrough(sni):
             data.ignore_connection = True
+            self.ctx.apps.record(self._conn_app.get(data.context.client.id, ""), sni)
             self.ctx.reqlog.add(reqlog.PASSTHROUGH, f"https://{sni}/", sni, method="TLS",
                                 detail=self._passthrough_reason(sni))
             return
@@ -184,14 +207,17 @@ class ShojiAddon:
         # 証明書ピンニングをするアプリ）は、そのアプリの通信だけ復号せずに通す。
         # 他のアプリ（Edge 等）でのフィルタリングには影響させない。
         if sni and winsys.IS_WIN and (self.ctx.untrusting_apps or not self.ctx.is_tls_ok(sni)):
-            port = data.context.client.peername[1] if data.context.client.peername else 0
-            try:
-                proc = await asyncio.get_running_loop().run_in_executor(
-                    None, winsys.process_for_client, port, int(self.ctx.cfg["proxy"]["listen_port"]))
-            except Exception:  # noqa: BLE001
-                proc = ""
+            proc = self._conn_app.get(data.context.client.id)
+            if proc is None:
+                port = data.context.client.peername[1] if data.context.client.peername else 0
+                try:
+                    proc = await asyncio.get_running_loop().run_in_executor(
+                        None, winsys.process_for_client, port, int(self.ctx.cfg["proxy"]["listen_port"]))
+                except Exception:  # noqa: BLE001
+                    proc = ""
             if proc and proc in self.ctx.untrusting_apps:
                 data.ignore_connection = True
+                self.ctx.apps.record(proc, sni)
                 self.ctx.reqlog.add(reqlog.PASSTHROUGH, f"https://{sni}/", sni, method="TLS",
                                     detail=t("log.untrusting", app=proc))
                 return
@@ -242,8 +268,9 @@ class ShojiAddon:
                 self.ctx.browsers.note(req.headers.get("user-agent", ""))   # ステルスモードで書き換える前に
         else:
             page_host = _host_of(req.headers.get("origin", "")) or _host_of(req.headers.get("referer", ""))
-        meta = {"rtype": rtype, "page_host": page_host, "notes": []}
+        meta = {"rtype": rtype, "page_host": page_host, "notes": [], "app": self._app_of(flow)}
         flow.metadata["kk"] = meta
+        self.ctx.apps.record(meta["app"], host)
         log = self.ctx.reqlog
         if host in ("127.0.0.1", "localhost", "::1") and req.port == int(cfg["dashboard"]["listen_port"]):
             meta["allowed"] = True      # ダッシュボード自身は記録も加工もしない
@@ -283,6 +310,7 @@ class ShojiAddon:
             brand = lookalike.imitated_brand(host)
             if brand:
                 detail = t("log.lookalike", brand=brand)
+                self.ctx.apps.record(meta["app"], host, blocked=True, request=False)
                 _log(reqlog.BLOCKED, rule=brand, cat="security", detail=detail)
                 stats.record("security", "proxy", host, rtype, detail=detail)
                 self._respond(flow, 200, injector.blocked_page_html(url, host, "lookalike", brand,
@@ -345,6 +373,7 @@ class ShojiAddon:
 
     def _block(self, flow, rule, cat, rtype, host, url, redir=""):
         stats = self.ctx.stats
+        self.ctx.apps.record(flow.metadata["kk"].get("app", ""), host, blocked=True, request=False)
         stats.record(cat, "proxy", host, rtype, detail=rule.raw)
         if cat == "ad" and (youtube.is_youtube_host(host)
                             or youtube.is_youtube_host(flow.metadata["kk"]["page_host"] or "")):
@@ -484,6 +513,7 @@ class ShojiAddon:
             return b""
         resp.stream = replace
         ext = downloads.extension(name)
+        self.ctx.apps.record(flow.metadata["kk"].get("app", ""), host, blocked=True, request=False)
         self.ctx.stats.record("security", "proxy", host, count_bytes=False, detail=t("log.download", ext=ext))
         self.ctx.reqlog.add(reqlog.BLOCKED, req.pretty_url, host, rtype=flow.metadata["kk"]["rtype"],
                             page=flow.metadata["kk"].get("page_host", ""), cat="security",

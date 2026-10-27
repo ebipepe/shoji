@@ -116,6 +116,15 @@ def create_app(ctx: AppContext) -> Flask:
                                  action=a.get("action", ""), q=a.get("q", ""), page=a.get("page", ""))
         return jsonify({"items": items, "last": ctx.reqlog.last_id(), "enabled": ctx.reqlog.enabled})
 
+    @app.get("/api/apps")
+    def get_apps():
+        return jsonify({"apps": ctx.apps.snapshot(), "supported": winsys.IS_WIN, "now": int(time.time())})
+
+    @app.post("/api/apps/clear")
+    def clear_apps():
+        ctx.apps.clear()
+        return jsonify({"ok": True})
+
     @app.post("/api/log/clear")
     def clear_log():
         ctx.reqlog.clear()

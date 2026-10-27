@@ -25,6 +25,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - **Look-alike domains.** Opening a domain made to look like a well-known site (`аpple.com` with a Cyrillic "а",
   `paypa1.com`, `rnicrosoft.com`, full-width letters, …) shows a warning before the page loads. About 120 commonly
   phished sites are covered, including major Japanese banks, card companies, carriers and delivery services.
+- **Apps tab.** Shows which apps connected through Shoji, how much, to which servers and how much was blocked
+  (Windows). Kept in memory only, like the filtering log.
 
 ### Changed
 - Much lower memory use. With the default and annoyance lists (about 850,000 network rules), Shoji used about

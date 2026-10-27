@@ -622,6 +622,28 @@ def test_lookalike_domains():
     assert L.skeleton("ｇｏｏｇｌｅ.com") == L.skeleton("google.com")
 
 
+def test_app_activity():
+    """アプリごとの通信の集計（メモリ上だけ）"""
+    from shoji import apps
+    a = apps.AppActivity()
+    for _ in range(3):
+        a.record("msedge.exe", "www.example.com")
+    a.record("msedge.exe", "ads.example", blocked=True)
+    a.record("msedge.exe", "ads.example", blocked=True, request=False)
+    a.record("", "x.example")                       # アプリが分からない通信は数えない
+    a.record("tool.exe", "api.example")
+    snap = a.snapshot()
+    assert [x["app"] for x in snap] == ["msedge.exe", "tool.exe"]
+    e = snap[0]
+    assert (e["requests"], e["blocked"], e["hosts"]) == (4, 2, 2)
+    assert e["top"][0] == ("www.example.com", 3) and e["top_blocked"] == [("ads.example", 2)]
+    for i in range(apps.MAX_HOSTS + 10):
+        a.record("tool.exe", f"h{i}.example")
+    assert len(a._apps["tool.exe"]["hosts"]) <= apps.MAX_HOSTS
+    a.clear()
+    assert a.snapshot() == []
+
+
 if __name__ == "__main__":
     for name, fn in list(globals().items()):
         if name.startswith("test_"):
