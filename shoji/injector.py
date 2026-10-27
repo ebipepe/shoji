@@ -270,6 +270,55 @@ button.pri{{background:var(--acc);border-color:var(--acc);color:#fff}}
 <p style="font-size:12px;margin-top:18px">Shoji</p></div></body></html>"""
 
 
+_DL_STYLE = """
+:root{color-scheme:light dark;--bg:#f6f7f9;--fg:#1d2330;--mut:#667085;--card:#fff;--acc:#c43c3b;--bd:#e3e6ec}
+@media (prefers-color-scheme:dark){:root{--bg:#12151b;--fg:#e8eaee;--mut:#98a2b3;--card:#1b2029;--bd:#2a313d}}
+body{margin:0;font:15px/1.7 system-ui,"Segoe UI","Hiragino Sans","Yu Gothic UI",sans-serif;background:var(--bg);color:var(--fg);display:grid;place-items:center;min-height:100vh}
+.c{background:var(--card);border:1px solid var(--bd);border-top:4px solid var(--acc);border-radius:14px;padding:28px 32px;max-width:580px;margin:16px}
+h1{font-size:20px;margin:0 0 10px} p{color:var(--mut);margin:8px 0} .f{color:var(--fg);font-weight:700;word-break:break-all}
+.r{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}
+button,a.btn{font:inherit;padding:8px 16px;border-radius:8px;border:1px solid var(--bd);background:var(--card);color:var(--fg);cursor:pointer;text-decoration:none}
+.pri{background:var(--acc)!important;border-color:var(--acc)!important;color:#fff!important}
+"""
+
+
+def download_warning_html(name: str, confirm_id: str) -> str:
+    """危険な種類のファイルの代わりに返す画面。スクリプトは使わない（万一ファイルとして保存されても無害なように）。
+    「それでもダウンロード」は Shoji 自身の画面（別のオリジン）に置き、このページのスクリプトからは押せないようにする"""
+    import html as _h
+    e = _h.escape
+    ext = name.rsplit(".", 1)[-1].lower() if "." in name else ""
+    more = (f'<a class="btn" href="{MAGIC_ORIGIN}/download-confirm?id={e(confirm_id)}">{e(t("dl.more"))}</a>'
+            if confirm_id else "")
+    return f"""<!doctype html><html lang="{lang()}"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>{e(t("dl.title"))}</title>
+<style>{_DL_STYLE}</style></head><body><div class="c">
+<h1>{e(t("dl.title"))}</h1>
+<p class="f">{e(name)}</p>
+<p>{e(t("dl.desc", ext=ext))}</p>
+<p>{e(t("dl.note"))}</p>
+<div class="r"><a class="btn pri" href="javascript:history.back()">{e(t("dl.back"))}</a>{more}</div>
+<p style="font-size:12px;margin-top:18px">Shoji</p></div></body></html>"""
+
+
+def download_confirm_html(name: str, url: str, confirm_id: str, token: str) -> str:
+    """Shoji 自身の画面での最終確認（ボタンは POST。他のページからは読めず、押せない）"""
+    import html as _h
+    e = _h.escape
+    return f"""<!doctype html><html lang="{lang()}"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>{e(t("dl.confirm.title"))}</title>
+<style>{_DL_STYLE}</style></head><body><div class="c">
+<h1>{e(t("dl.confirm.title"))}</h1>
+<p class="f">{e(name)}</p>
+<p style="word-break:break-all;font-size:13px">{e(url)}</p>
+<p>{e(t("dl.confirm.desc"))}</p>
+<form class="r" method="post" action="{MAGIC_ORIGIN}/allow-download">
+<input type="hidden" name="id" value="{e(confirm_id)}"><input type="hidden" name="t" value="{e(token)}">
+<button>{e(t("dl.confirm.go"))}</button>
+</form>
+<p style="font-size:12px;margin-top:18px">Shoji</p></div></body></html>"""
+
+
 def _url_quote(u: str) -> str:
     from urllib.parse import quote
     return quote(u, safe="")

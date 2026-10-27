@@ -186,6 +186,18 @@ MESSAGES: dict[str, dict[str, str]] = {
                            "en": "[proxy] Several sites rejected the certificate, so the root certificate is not trusted. HTTPS filtering is paused (domain blocking continues). Install the certificate from Setup in the dashboard and restart your browser."},
     "msg.no_tray": {"ja": "[tray] pystray が見つからないため、タスクトレイには表示しません（pip install pystray pillow）", "en": "[tray] pystray not found; no tray icon (pip install pystray pillow)"},
     # ---- 「このサイトでは止める」確認画面
+    "dl.title": {"ja": "危険な種類のファイルのダウンロードを止めました", "en": "A dangerous type of file was not downloaded"},
+    "dl.desc": {"ja": ".{ext} のファイルは、開くとすぐにプログラムとして動く種類です。ウイルスを送り込む手口によく使われ、ふつうの利用ではまず必要ありません。",
+                "en": "A .{ext} file runs as a program as soon as it is opened. This type is often used to plant malware and is rarely needed for everyday use."},
+    "dl.note": {"ja": "「請求書」「確認のため」などと案内されて開こうとしていた場合は、詐欺の可能性が高いです。",
+                "en": "If you were told to open it as an invoice, a form or for verification, it is very likely a scam."},
+    "dl.back": {"ja": "前のページに戻る", "en": "Go back"},
+    "dl.more": {"ja": "それでもダウンロードする…", "en": "Download anyway…"},
+    "dl.confirm.title": {"ja": "本当にダウンロードしますか？", "en": "Download this file anyway?"},
+    "dl.confirm.desc": {"ja": "配布元を信頼でき、何のファイルか分かっている場合だけ続けてください。このファイルを 1 回だけダウンロードできるようにします。",
+                        "en": "Only continue if you trust the source and know what this file is. Shoji will let this file through once."},
+    "dl.confirm.go": {"ja": "ダウンロードする", "en": "Download"},
+    "log.download": {"ja": "危険な種類のファイル（.{ext}）のダウンロードを確認", "en": "Dangerous file type (.{ext}): asked before downloading"},
     "site.title": {"ja": "{host} で Shoji を止めますか？", "en": "Turn Shoji off on {host}?"},
     "site.desc": {"ja": "このサイトでは、広告・トラッカーのブロック、要素の非表示、ステルスモードなどのフィルタをすべて止めます。"
                         "表示が崩れるときや、広告を表示してサイトを応援したいときに使います。",

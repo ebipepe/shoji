@@ -584,6 +584,27 @@ def test_browser_versions():
     assert browsers.latest_from("edge", {"bad": 1}) is None and browsers.latest_from("chrome", []) is None
 
 
+def test_dangerous_downloads():
+    """危険な種類のファイルのダウンロードだけを見分ける"""
+    from shoji import downloads as dl
+    D = dl.dangerous_download
+    assert D("https://x.test/f", "document", "application/octet-stream", 'attachment; filename="Invoice.pdf.hta"') == "Invoice.pdf.hta"
+    assert D("https://x.test/f", "document", "application/octet-stream", "attachment; filename*=UTF-8''%E8%AB%8B%E6%B1%82.lnk") == "請求.lnk"
+    assert D("https://x.test/run.vbs", "document", "application/x-vbs", "") == "run.vbs"          # 開いた先が保存される種類
+    assert D("https://x.test/a.js", "script", "application/javascript", "") is None               # ページが使うスクリプト
+    assert D("https://x.test/a.js", "document", "text/javascript", "") is None                    # 画面に表示される
+    assert D("https://x.test/a.js", "xmlhttprequest", "application/octet-stream", "") is None
+    assert D("https://x.test/setup.exe", "document", "application/octet-stream", "attachment") is None   # .exe は対象外
+    assert D("https://x.test/doc.pdf", "document", "application/pdf", 'attachment; filename="doc.pdf"') is None
+    assert D("https://x.test/x", "document", "text/plain", 'attachment; filename="x.bat. "') == "x.bat."   # 末尾の点・空白も .bat
+    assert dl.extension("x.bat. ") == "bat" and dl.extension("noext") == ""
+    g = dl.DownloadGate()
+    i = g.hold("https://x.test/a.hta", "a.hta")
+    assert g.pending(i) == ("https://x.test/a.hta", "a.hta") and not g.consume("https://x.test/a.hta")
+    assert g.allow(i) == "https://x.test/a.hta" and g.allow(i) is None        # 確認は 1 回だけ
+    assert g.consume("https://x.test/a.hta") and not g.consume("https://x.test/a.hta")   # 通すのも 1 回だけ
+
+
 if __name__ == "__main__":
     for name, fn in list(globals().items()):
         if name.startswith("test_"):

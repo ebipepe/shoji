@@ -14,6 +14,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - **Browser update check.** Shoji tells you on the dashboard when the Edge, Chrome or Firefox you use is older than
   the latest version, checked once a day from the vendors' public version information (can be turned off). Only the
   major version can be compared, because browsers no longer send the full version.
+- **Dangerous file types are confirmed before downloading.** Files that run as a program when opened and are rarely
+  needed for everyday use (.hta, .js, .vbs, .lnk, .scr, .bat, .ps1, …) are replaced by a warning page. "Download
+  anyway" is confirmed on Shoji's own page (the site cannot press it) and lets that file through once. Scripts that
+  pages load, .exe/.msi and other downloads are not affected.
 
 ### Changed
 - Much lower memory use. With the default and annoyance lists (about 850,000 network rules), Shoji used about

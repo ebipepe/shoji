@@ -22,7 +22,7 @@ from urllib.parse import parse_qs, urlsplit
 from mitmproxy import http, tls
 from mitmproxy.net.http.headers import infer_content_encoding
 
-from . import injector, lists, redirects, reqlog, scriptlets, winsys, xcom, youtube
+from . import downloads, injector, lists, redirects, reqlog, scriptlets, winsys, xcom, youtube
 from .config import BUILTIN_HTTPS_EXCLUSIONS, CERT_DIR, DEFAULT_SHORTCUTS, is_whitelisted
 from .context import AppContext
 from .i18n import lang, t
@@ -96,6 +96,7 @@ class ShojiAddon:
         self._flag_cache: OrderedDict = OrderedDict()
         self._client_proc: dict = {}
         self._flag_ver = ""
+        self._downloads = downloads.DownloadGate()
 
     # ------------------------------------------------------------ 補助
     @property
@@ -427,6 +428,12 @@ class ShojiAddon:
                     resp.headers.set_all("set-cookie", [limit_cookie_age(c, int(hours * 3600))
                                                         for c in resp.headers.get_all("set-cookie")])
         ct = resp.headers.get("content-type", "").lower()
+        if self.ctx.cfg["features"].get("download_guard", True) and resp.status_code == 200:
+            name = downloads.dangerous_download(flow.request.pretty_url, meta["rtype"], ct,
+                                                resp.headers.get("content-disposition", ""))
+            if name and not self._downloads.consume(flow.request.pretty_url):
+                self._hold_download(flow, name)
+                return
         need = False
         if resp.status_code == 200 and "text/html" in ct and meta["rtype"] in ("document", "sub_frame", "other") \
                 and flow.request.method == "GET":
@@ -437,6 +444,38 @@ class ShojiAddon:
             need = True
         if not need:
             resp.stream = True
+
+    def _hold_download(self, flow: http.HTTPFlow, name: str) -> None:
+        """危険な種類のファイルの代わりに確認画面を返す（ファイルの中身はブラウザに渡さない）"""
+        req, resp = flow.request, flow.response
+        host = req.pretty_host.lower()
+        nav = req.headers.get("sec-fetch-mode", "navigate") == "navigate"
+        # 「それでもダウンロード」はページを開いたときだけ（fetch などで読まれる場合は確認画面も出さない）
+        cid = self._downloads.hold(req.pretty_url, name) if nav else ""
+        body = injector.download_warning_html(name, cid).encode("utf-8")
+        h = resp.headers
+        for k in ("content-disposition", "content-length", "content-encoding", "content-security-policy",
+                  "content-security-policy-report-only", "x-content-type-options", "set-cookie"):
+            h.pop(k, None)
+        h["content-type"] = "text/html; charset=utf-8"
+        h["cache-control"] = "no-store"
+        h["x-shoji"] = "download"
+        if not nav:
+            resp.status_code = 403
+        sent = [False]
+
+        def replace(chunk: bytes) -> bytes:
+            # 最初に確認画面を送り、ファイル本体は捨てる
+            if not sent[0]:
+                sent[0] = True
+                return body
+            return b""
+        resp.stream = replace
+        ext = downloads.extension(name)
+        self.ctx.stats.record("security", "proxy", host, count_bytes=False, detail=t("log.download", ext=ext))
+        self.ctx.reqlog.add(reqlog.BLOCKED, req.pretty_url, host, rtype=flow.metadata["kk"]["rtype"],
+                            page=flow.metadata["kk"].get("page_host", ""), cat="security",
+                            detail=t("log.download", ext=ext))
 
     def response(self, flow: http.HTTPFlow) -> None:
         resp = flow.response
@@ -582,6 +621,25 @@ class ShojiAddon:
                                                {"Content-Type": "application/json", "Cache-Control": "no-store", **cors})
         elif path == "/allow-site":
             self._allow_site(flow, req)
+        elif path == "/download-confirm" and req.method == "GET":
+            cid = parse_qs(urlsplit(req.pretty_url).query).get("id", [""])[0]
+            p = self._downloads.pending(cid)
+            if not p:
+                flow.response = http.Response.make(404, b"expired", {"Content-Type": "text/plain"})
+                return
+            page = injector.download_confirm_html(p[1], p[0], cid, self.ctx.issue_token("download", cid))
+            # CORS ヘッダーは付けない（他のページがこの画面を読んでトークンを取り出せないように）
+            flow.response = http.Response.make(200, page.encode("utf-8"), {
+                "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store",
+                "X-Frame-Options": "DENY", "Content-Security-Policy": "frame-ancestors 'none'"})
+        elif path == "/allow-download" and req.method == "POST":
+            form = parse_qs(req.get_text(strict=False) or "")
+            cid = form.get("id", [""])[0]
+            url = self._downloads.allow(cid) if self.ctx.use_token(form.get("t", [""])[0], "download", cid) else None
+            if url:
+                flow.response = http.Response.make(303, b"", {"Location": url, "Cache-Control": "no-store"})
+            else:
+                flow.response = http.Response.make(400, b"expired", {"Content-Type": "text/plain"})
         elif path == "/allow":
             qs = parse_qs(urlsplit(req.pretty_url).query)
             target = qs.get("url", [""])[0]
