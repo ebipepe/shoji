@@ -22,6 +22,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   of scams that keep showing fake virus alerts) are answered "not decided" without a prompt. Prompts after you
   press a site's own button still appear unless the page says something like "click Allow if you are not a robot".
   Sites you already allowed are not affected (can be turned off).
+- **Look-alike domains.** Opening a domain made to look like a well-known site (`аpple.com` with a Cyrillic "а",
+  `paypa1.com`, `rnicrosoft.com`, full-width letters, …) shows a warning before the page loads. About 120 commonly
+  phished sites are covered, including major Japanese banks, card companies, carriers and delivery services.
 
 ### Changed
 - Much lower memory use. With the default and annoyance lists (about 850,000 network rules), Shoji used about

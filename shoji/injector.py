@@ -190,12 +190,19 @@ def blocked_frame_html() -> str:
             "<script>try{parent.postMessage({shoji:'collapse'},'*')}catch(e){}</script>")
 
 
-def blocked_page_html(url: str, host: str, category: str, rule: str, token: str = "") -> str:
+def blocked_page_html(url: str, host: str, category: str, rule: str, token: str = "", brand: str = "") -> str:
     import html as _h
     allow = f"{MAGIC_ORIGIN}/allow?url=" + _url_quote(url) + "&t=" + _url_quote(token)
-    danger = category == "security"
+    danger = category in ("security", "lookalike")
     h = _h.escape(host)
-    if danger:
+    if category == "lookalike":
+        from .lookalike import display
+        title = t("look.title")
+        lead = t("look.lead", host=_h.escape(display(host)), brand=_h.escape(brand))
+        extra = f'<p class="warn">{_h.escape(t("look.warn", brand=brand))}</p>'
+        allow_label = t("danger.allow")
+        acc = "#c43c3b"
+    elif danger:
         title = t("danger.title")
         lead = t("danger.lead", host=h)
         extra = f'<p class="warn">{_h.escape(t("danger.warn"))}</p>'
@@ -234,7 +241,7 @@ a.sub{{font-size:12.5px;color:var(--mut)}}
 <p>{lead}</p>
 {extra}
 <p><code>{_h.escape(url[:300])}</code></p>
-<p style="font-size:12px">{t("block.rule")}: <code>{_h.escape(rule[:200])}</code></p>
+<p style="font-size:12px">{t("look.rule") if category == "lookalike" else t("block.rule")}: <code>{_h.escape(rule[:200])}</code></p>
 <div class="b"><a class="btn pri" href="javascript:history.back()">{t("block.back")}</a>
 <a class="btn{' sub' if danger else ''}" href="{_h.escape(allow)}">{_h.escape(allow_label)}</a></div>
 <p style="font-size:12px;margin-top:18px">Shoji</p></div>

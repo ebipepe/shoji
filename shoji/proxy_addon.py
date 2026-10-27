@@ -22,7 +22,7 @@ from urllib.parse import parse_qs, urlsplit
 from mitmproxy import http, tls
 from mitmproxy.net.http.headers import infer_content_encoding
 
-from . import downloads, injector, lists, redirects, reqlog, scriptlets, winsys, xcom, youtube
+from . import downloads, injector, lists, lookalike, redirects, reqlog, scriptlets, winsys, xcom, youtube
 from .config import BUILTIN_HTTPS_EXCLUSIONS, CERT_DIR, DEFAULT_SHORTCUTS, is_whitelisted
 from .context import AppContext
 from .i18n import lang, t
@@ -277,6 +277,18 @@ class ShojiAddon:
             meta["allowed"] = True
             _log(reqlog.ALLOWED, detail=t("log.docexc"))
             return
+
+        # 有名なサイトに見た目を似せた別のドメイン（フィッシング）
+        if F.get("block_malware", True) and rtype == "document" and req.method == "GET":
+            brand = lookalike.imitated_brand(host)
+            if brand:
+                detail = t("log.lookalike", brand=brand)
+                _log(reqlog.BLOCKED, rule=brand, cat="security", detail=detail)
+                stats.record("security", "proxy", host, rtype, detail=detail)
+                self._respond(flow, 200, injector.blocked_page_html(url, host, "lookalike", brand,
+                                                                    self.ctx.issue_token("allow", host), brand),
+                              "text/html; charset=utf-8")
+                return
 
         # AMP → 通常ページ
         if F["disable_amp"] and rtype == "document" and req.method == "GET":

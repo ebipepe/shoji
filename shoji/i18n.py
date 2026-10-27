@@ -186,6 +186,13 @@ MESSAGES: dict[str, dict[str, str]] = {
                            "en": "[proxy] Several sites rejected the certificate, so the root certificate is not trusted. HTTPS filtering is paused (domain blocking continues). Install the certificate from Setup in the dashboard and restart your browser."},
     "msg.no_tray": {"ja": "[tray] pystray が見つからないため、タスクトレイには表示しません（pip install pystray pillow）", "en": "[tray] pystray not found; no tray icon (pip install pystray pillow)"},
     # ---- 「このサイトでは止める」確認画面
+    "look.title": {"ja": "本物そっくりの偽サイトの可能性があります", "en": "This may be a fake copy of a well-known site"},
+    "look.lead": {"ja": "<b>{host}</b> は、<b>{brand}</b> に見た目を似せた、別のドメインです。似た形の別の文字（ほかの国の文字や数字）が使われています。",
+                  "en": "<b>{host}</b> is a different domain made to look like <b>{brand}</b>. It uses look-alike characters (letters from other alphabets, or digits)."},
+    "look.warn": {"ja": "ID・パスワード・カード番号などは入力しないでください。本物のサイトは {brand} です。",
+                  "en": "Do not enter any ID, password or card number. The real site is {brand}."},
+    "look.rule": {"ja": "似せている先", "en": "Imitates"},
+    "log.lookalike": {"ja": "{brand} に似せた別のドメイン", "en": "Look-alike of {brand}"},
     "dl.title": {"ja": "危険な種類のファイルのダウンロードを止めました", "en": "A dangerous type of file was not downloaded"},
     "dl.desc": {"ja": ".{ext} のファイルは、開くとすぐにプログラムとして動く種類です。ウイルスを送り込む手口によく使われ、ふつうの利用ではまず必要ありません。",
                 "en": "A .{ext} file runs as a program as soon as it is opened. This type is often used to plant malware and is rarely needed for everyday use."},

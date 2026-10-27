@@ -605,6 +605,23 @@ def test_dangerous_downloads():
     assert g.consume("https://x.test/a.hta") and not g.consume("https://x.test/a.hta")   # 通すのも 1 回だけ
 
 
+def test_lookalike_domains():
+    """有名なサイトに見た目を似せた別のドメインを見分ける（本物と無関係なドメインは対象外）"""
+    from shoji import lookalike as L
+    fakes = {"xn--pple-43d.com": "apple.com",            # キリル文字の а
+             "login.xn--80ak6aa92e.com": "apple.com",     # すべてキリル文字（аррӏе）
+             "xn--ggle-0nda.com": "google.com",           # ギリシャ文字の ο
+             "paypa1.com": "paypal.com", "rnicrosoft.com": "microsoft.com", "m1crosoft.com": "microsoft.com",
+             "arnazon.co.jp": "amazon.co.jp", "yah00.co.jp": "yahoo.co.jp", "1ine.me": "line.me"}
+    for host, brand in fakes.items():
+        assert L.imitated_brand(host) == brand, host
+    for host in ("apple.com", "www.apple.com", "images.google.com", "amazon.co.jp", "line.me", "example.com",
+                 "paypal.co", "githud.com", "x.com", "au.com", "av.com", "mufg.jp", "news.yahoo.co.jp"):
+        assert L.imitated_brand(host) is None, host
+    assert L.display("login.xn--pple-43d.com") == "login.аpple.com"
+    assert L.skeleton("ｇｏｏｇｌｅ.com") == L.skeleton("google.com")
+
+
 if __name__ == "__main__":
     for name, fn in list(globals().items()):
         if name.startswith("test_"):
