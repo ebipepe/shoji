@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import json
 import re
+import sys
 import threading
 from functools import lru_cache
 from collections import defaultdict
@@ -116,6 +117,16 @@ _PROCEDURAL = re.compile(
     r":-abp-|:has-text|:contains|:xpath|:upward|:remove\(|:style\(|:matches-|:min-text-length|"
     r":watch-attr|:others|:if\(|:if-not|:nth-ancestor|:matches-path|:matches-attr|"
     r":matches-prop|:remove-attr|:remove-class|\[-ext-|:shadow")
+
+
+# 種別などの集合は組み合わせが少ないので、同じ中身なら同じオブジェクトを使い回す。
+# （空の frozenset も毎回別のオブジェクトになるため、ルールごとに作ると約 80 万ルールで数百 MB になる）
+_FS_CACHE: dict[frozenset, frozenset] = {}
+
+
+def _shared_fs(items) -> frozenset:
+    f = frozenset(items)
+    return _FS_CACHE.setdefault(f, f)
 
 
 @dataclass(eq=False, slots=True)
@@ -300,6 +311,9 @@ def url_tokens(url: str) -> set[str]:
 _HOSTS_LINE = re.compile(r"^(?:0\.0\.0\.0|127\.0\.0\.1|::1?|::)\s+([^\s#]+)")
 _PLAIN_DOMAIN = re.compile(r"^\|\|([a-z0-9.\-_*]+)\^(\$(.*))?$", re.I)
 _HOST_PREFIX = re.compile(r"^\|\|([a-z0-9.\-_]+)([/^:?|].*|)$", re.I)
+# オプションの無い「||ホスト^」だけのルール。数十万件あるので、ルールのオブジェクトを作らずに
+# ホスト名 → カテゴリだけを持つ（照合で一致したときに、その場でルールを作る）
+_SIMPLE_HOST = re.compile(r"^\|\|([a-z0-9.\-_]+)\^?$", re.I)
 _SIMPLE_SEL = re.compile(r"^([a-z0-9]*)([.#])([\w-]+)$", re.I)
 _ATTR_RE = re.compile(r"""\s(class|id)\s*=\s*["']([^"'<>]{1,500})["']""", re.I)
 _COSMETIC_RE = re.compile(r"^([a-z0-9.,~*\-_]*)(#@?[?$%]?#|\$@?\$)(.+)$", re.I)
@@ -327,6 +341,9 @@ class FilterEngine:
         self.ad_hosts: set[str] = set()           # 広告系リストに載っているホスト
         self.security_hosts: set[str] = set()     # マルウェア・フィッシング・採掘スクリプトのホスト
         self.host_rules: dict[str, list[NetRule]] = defaultdict(list)
+        self.simple_hosts: dict[str, str] = {}      # 「||ホスト^」だけのブロックルール: ホスト -> カテゴリ
+        self._simple_cache: dict[str, NetRule] = {}
+        self._simple_pending: list[tuple[str, str, str]] = []   # 読み込み中だけ使う (ホスト, カテゴリ, 元の行)
         self.host_exc: dict[str, list[NetRule]] = defaultdict(list)
         self.token_rules: dict[str, list[NetRule]] = defaultdict(list)
         self.token_exc: dict[str, list[NetRule]] = defaultdict(list)
@@ -394,7 +411,7 @@ class FilterEngine:
         self._parse_network(line, cat, pending)
 
     def _add_dns(self, d: str, cat: str):
-        d = d.strip(".").lower()
+        d = sys.intern(d.strip(".").lower())
         if not d or "*" in d or d in _DNS_NEVER_BLOCK:
             return
         if cat == "annoyance":
@@ -487,6 +504,16 @@ class FilterEngine:
         self.counts["scriptlet"] += 1
 
     def _parse_network(self, line: str, cat: str, pending: list):
+        # いちばん多い「||ホスト^」だけのルールは、ルールのオブジェクトを作らずに扱う（メモリ節約）
+        if line[:2] == "||" and "$" not in line and not self._cur_user:
+            sm = _SIMPLE_HOST.match(line)
+            if sm:
+                host = sys.intern(sm.group(1).lower())
+                if cat != "annoyance":
+                    {"tracker": self.tracker_hosts, "security": self.security_hosts}.get(cat, self.ad_hosts).add(host)
+                self._add_dns(host, cat)
+                self._simple_pending.append((host, cat, line))
+                return
         exception = line.startswith("@@")
         if exception:
             line = line[2:]
@@ -548,7 +575,7 @@ class FilterEngine:
             else:
                 self.counts["network_unsupported"] += 1
                 return
-        rule.types, rule.not_types, rule.doc_flags = frozenset(types), frozenset(not_types), frozenset(flags)
+        rule.types, rule.not_types, rule.doc_flags = _shared_fs(types), _shared_fs(not_types), _shared_fs(flags)
         if rule.redirect is not None:
             if exception:
                 # @@...$redirect は「代替品を使わない」という意味で、通信の許可ではない
@@ -588,6 +615,13 @@ class FilterEngine:
             self.redirect_rules = [r for r in self.redirect_rules if r.raw not in self._badfilters]
             self.dns_block = {d: c for d, c in self.dns_block.items()
                               if f"||{d}^" not in self._badfilters}
+        for host, cat, raw in self._simple_pending:
+            if raw in self._badfilters:
+                continue
+            self.counts["network"] += 1
+            if self.simple_hosts.get(host) != "security":
+                self.simple_hosts[host] = cat
+        self._simple_pending = []
         # トークン頻度
         freq = defaultdict(int)
         cand: dict[int, list[str]] = {}
@@ -608,6 +642,16 @@ class FilterEngine:
                     self.param_rules.append(r)
                 continue
             self.counts["network"] += 1
+            if (not r.exception and not r.user and not r.is_regex and not r.important and not r.types
+                    and not r.not_types and r.third_party is None and not r.domains and not r.not_domains
+                    and r.redirect is None):
+                sm = _SIMPLE_HOST.match(r.pattern)
+                if sm:
+                    h = sys.intern(sm.group(1).lower())
+                    # 同じホストが複数のリストにあれば後のリストのカテゴリ。ただし危険サイトは危険サイトのまま
+                    if self.simple_hosts.get(h) != "security":
+                        self.simple_hosts[h] = r.category
+                    continue
             site_only = bool(r.domains) and not r.not_domains and all(not d.endswith(".*") for d in r.domains)
             ctxd = self.ctx_exc if r.exception else self.ctx_rules
             hm = None if r.is_regex else _HOST_PREFIX.match(r.pattern)
@@ -713,6 +757,10 @@ class FilterEngine:
         ps = list(host_suffixes(page_host or host))
         for s in hs:
             yield from hd.get(s, ())
+            if not exc:
+                cat = self.simple_hosts.get(s)
+                if cat is not None:
+                    yield self._simple_rule(s, cat)
         for t in toks:
             yield from td.get(t, ())
         if cd:
@@ -730,6 +778,16 @@ class FilterEngine:
                 rules = tri.get(k)
                 if rules:
                     yield from rules
+
+    def _simple_rule(self, host: str, cat: str) -> NetRule:
+        """simple_hosts の 1 件を、照合・ログ用のルールとして返す（正規表現を作り直さないよう覚えておく）"""
+        r = self._simple_cache.get(host)
+        if r is None or r.category != cat:
+            if len(self._simple_cache) > 4096:
+                self._simple_cache.clear()
+            r = NetRule(raw=f"||{host}^", pattern=f"||{host}^", category=cat)
+            self._simple_cache[host] = r
+        return r
 
     def match_url(self, url: str, host: str, page_host: str, rtype: str) -> Optional[NetRule]:
         """ブロックすべきなら該当ルールを返す（例外ルールで許可された場合は None）"""

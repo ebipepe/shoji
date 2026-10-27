@@ -521,6 +521,27 @@ cffi==2.1.1 ; python_full_version >= '3.0' or implementation_name != 'PyPy' \\
     assert len(depcheck.read_lock((root / "requirements-lock.txt").read_text(encoding="utf-8"))) >= 40
 
 
+def test_simple_host_rules_compact():
+    """「||ホスト^」だけのルールはオブジェクトを作らずに持つ（メモリ節約）。照合の結果は変わらない"""
+    e = FilterEngine()
+    e.load([("ads", "||ads.example^\n||both.example^\n||gone.example^\n||opt.example^$script\n", "ad"),
+            ("trk", "||both.example^\n||trk.example^\n||gone.example^$badfilter\n", "tracker"),
+            ("sec", "||evil.example^\n", "security"),
+            ("ads2", "||evil.example^\n@@||ads.example^$image\n", "ad"),
+            ("user", "||mine.example^\n", "ad")])
+    assert "ads.example" in e.simple_hosts and "mine.example" not in e.simple_hosts
+    assert not any(e.host_rules.get(h) for h in ("ads.example", "trk.example"))
+    hit = e.match_url("https://x.ads.example/a.js", "x.ads.example", "site.example", "script")
+    assert hit and hit.raw == "||ads.example^" and hit.category == "ad"
+    assert e.match_url("https://ads.example/p.gif", "ads.example", "site.example", "image") is None   # 例外が効く
+    assert e.match_url("https://trk.example/", "trk.example", "", "script").category == "tracker"
+    assert e.match_url("https://gone.example/", "gone.example", "", "script") is None              # $badfilter
+    assert e.match_url("https://evil.example/", "evil.example", "", "script").category == "security"   # 危険サイトのまま
+    assert e.match_url("https://opt.example/", "opt.example", "", "image") is None                 # オプション付きは従来どおり
+    assert e.match_url("https://mine.example/", "mine.example", "", "image").user
+    assert e.dns_lookup("trk.example") and e.dns_lookup("ads.example")
+
+
 if __name__ == "__main__":
     for name, fn in list(globals().items()):
         if name.startswith("test_"):

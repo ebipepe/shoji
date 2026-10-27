@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Changed
+- Much lower memory use. With the default and annoyance lists (about 850,000 network rules), Shoji used about
+  1.3 GB; it now uses about 0.5 GB, and loading the lists takes about half as long. Rules that only name a host
+  (`||example.com^`, about half of all rules) are stored as a plain host table, and identical option sets are
+  shared. Matching results are unchanged (checked against the previous engine on 216,000 requests).
+
 ## [0.5.4] - 2026-10-28
 
 ### Added
