@@ -40,6 +40,30 @@ can develop and test it on Linux/macOS too. Only `shoji/winsys.py` is Windows-sp
 - By submitting a contribution you agree that it is licensed under the Apache License 2.0
   (see section 5 of [LICENSE](LICENSE)). Feel free to add yourself to [AUTHORS](AUTHORS).
 
+## Dependencies
+
+`requirements.txt` lists the packages Shoji needs with minimum versions; running from source installs the newest
+ones. The Windows release build instead installs **exact versions with hashes** from `requirements-lock.txt`
+(and `packaging/build-lock.txt` / `packaging/licenses-lock.txt` for PyInstaller and pip-licenses), so a release
+never picks up a new third-party version by surprise.
+
+When you add, remove or update a package, regenerate the lists with [uv](https://docs.astral.sh/uv/) and commit
+them together with `requirements.txt`:
+
+```bat
+pip install uv
+rem After editing requirements.txt (keeps the other versions):
+python packaging/update_locks.py
+rem Update one package:
+python packaging/update_locks.py -P mitmproxy
+rem Update everything:
+python packaging/update_locks.py --upgrade
+```
+
+`python tests/test_core.py` fails if `requirements-lock.txt` is missing a package from `requirements.txt`, and a
+pull request that changes these files runs a trial Windows build. Security fixes in bundled packages are released
+promptly; other updates are usually batched with a regular release.
+
 ## Filter rules
 
 Shoji downloads community filter lists at runtime. If a problem is in one of those lists, please report it

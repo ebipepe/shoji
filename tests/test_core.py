@@ -456,6 +456,38 @@ def test_x_promoted_posts():
     assert not xcom.is_x_api("notx.com", "/i/api/graphql/abc/HomeTimeline")
 
 
+def test_release_locks():
+    """リリース用の固定の一覧（requirements-lock.txt など）が、requirements.txt と食い違っていないか"""
+    import re
+    root = Path(__file__).resolve().parent.parent
+
+    def norm(name):
+        return re.sub(r"[-_.]+", "-", name).lower()
+
+    def pinned(path):
+        pins = {}
+        lines = (root / path).read_text(encoding="utf-8").splitlines()
+        for i, line in enumerate(lines):
+            if not line[:1].isalnum():
+                continue
+            # どの部品も版をちょうど 1 つに決め、ハッシュを付ける（--require-hashes で入れるため）
+            m = re.match(r"([A-Za-z0-9][A-Za-z0-9._-]*)==([^\s;]+)", line)
+            assert m and i + 1 < len(lines) and "--hash=sha256:" in lines[i + 1], (path, line)
+            pins[norm(m.group(1))] = m.group(2)
+        return pins
+
+    lock = pinned("requirements-lock.txt")
+    wanted = set()
+    for line in (root / "requirements.txt").read_text(encoding="utf-8").splitlines():
+        line = line.split("#", 1)[0].strip()
+        if line:
+            wanted.add(norm(re.match(r"[A-Za-z0-9._-]+", line).group(0)))
+    missing = wanted - set(lock)
+    assert not missing, f"requirements-lock.txt に無い部品: {sorted(missing)}（python packaging/update_locks.py を実行）"
+    assert "pyinstaller" in pinned("packaging/build-lock.txt")
+    assert "pip-licenses" in pinned("packaging/licenses-lock.txt")
+
+
 if __name__ == "__main__":
     for name, fn in list(globals().items()):
         if name.startswith("test_"):

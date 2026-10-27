@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Changed
+- The Windows release is now built from pinned versions with hashes (`requirements-lock.txt`), so third-party
+  packages change only when they are deliberately updated. See *Dependencies* in CONTRIBUTING.md.
+
+### Fixed
+- The license text of `wcwidth` (bundled with mitmproxy's urwid) is now included in `THIRD_PARTY_LICENSES.txt`.
+
 ## [0.5.2] - 2026-10-24
 
 ### Added

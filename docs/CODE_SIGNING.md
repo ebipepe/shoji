@@ -19,6 +19,8 @@ Until then, you can check that a download is genuine:
 ## How releases are made
 
 - Binaries are built only by GitHub Actions from this repository. Nothing is built or uploaded by hand.
+- Third-party packages are installed from pinned versions with hashes (`requirements-lock.txt`), so a build uses
+  exactly the reviewed versions.
 - Releases are published manually by the maintainer after reviewing the changes.
 - Third-party components are listed in [NOTICE](../NOTICE) and [docs/LICENSING.md](LICENSING.md) and are
   included in `THIRD_PARTY_LICENSES.txt` in every release.

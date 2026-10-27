@@ -3,12 +3,23 @@
 #
 # Triggered when a release is published on GitHub (Releases → Draft a new release),
 # or manually from the Actions tab (the build is then kept as a workflow artifact only).
+# Pull requests that change the pinned versions are built and smoke-tested too.
+#
+# Everything is installed from pinned lists with hashes (requirements-lock.txt and
+# packaging/*-lock.txt), so a release never picks up a new third-party version by surprise.
+# To change versions, run `python packaging/update_locks.py` (see that file).
 name: Release build
 
 on:
   release:
     types: [published]
   workflow_dispatch:
+  pull_request:
+    paths:
+      - requirements.txt
+      - requirements-lock.txt
+      - "packaging/**"
+      - .github/workflows/release.yml
 
 permissions:
   contents: write
@@ -26,28 +37,28 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Install runtime dependencies (clean environment)
+      - name: Install runtime dependencies (clean environment, pinned versions)
         run: |
           python -m venv .venv
-          .venv\Scripts\python -m pip install --upgrade pip
-          .venv\Scripts\pip install -r requirements.txt
+          .venv\Scripts\pip install --require-hashes -r requirements-lock.txt
 
       - name: Collect third-party licenses
         # Apache-2.0 / MIT / BSD all require their license (and NOTICE) texts to ship with
         # binary redistributions. Generate them from exactly the packages bundled in the exe.
+        # pip-licenses runs from its own environment, so it lists only what Shoji bundles.
         run: |
-          .venv\Scripts\pip install pip-licenses
-          .venv\Scripts\pip-licenses --from=mixed --with-urls --with-license-file --with-notice-file `
-            --no-license-path --format=plain-vertical `
-            --ignore-packages pip-licenses prettytable wcwidth pip setuptools `
+          python -m venv .tools
+          .tools\Scripts\pip install --require-hashes -r packaging/licenses-lock.txt
+          $py = (Resolve-Path .venv\Scripts\python.exe).Path
+          .tools\Scripts\pip-licenses --python $py --from=mixed --with-urls --with-license-file --with-notice-file `
+            --no-license-path --format=plain-vertical --ignore-packages pip setuptools `
             --output-file THIRD_PARTY_LICENSES.txt
-          .venv\Scripts\pip-licenses --from=mixed --format=markdown `
-            --ignore-packages pip-licenses prettytable wcwidth pip setuptools
+          .tools\Scripts\pip-licenses --python $py --from=mixed --format=markdown --ignore-packages pip setuptools
           Add-Content THIRD_PARTY_LICENSES.txt "`n`nPyInstaller bootloader`nGPL-2.0 with a special exception that permits distributing the bundled application under any license.`nhttps://github.com/pyinstaller/pyinstaller/blob/develop/COPYING.txt"
 
       - name: Build Shoji.exe
         run: |
-          .venv\Scripts\pip install pyinstaller
+          .venv\Scripts\pip install --require-hashes -r packaging/build-lock.txt
           .venv\Scripts\pyinstaller packaging/shoji.spec --noconfirm
 
       - name: Smoke test the executable

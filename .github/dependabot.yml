@@ -1,0 +1,13 @@
+# SPDX-License-Identifier: Apache-2.0
+# Keeps the GitHub Actions used by CI and the release build up to date.
+# Python packages are updated with `python packaging/update_locks.py` (see CONTRIBUTING.md);
+# security alerts for them come from Dependabot alerts in the repository settings.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: monthly
+    groups:
+      actions:
+        patterns: ["*"]
