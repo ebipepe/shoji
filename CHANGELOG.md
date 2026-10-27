@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.5.4] - 2026-10-28
+
 ### Added
 - Source version: Shoji checks at startup that the installed packages are not older than `requirements-lock.txt`
   and shows a warning in the log and on the dashboard. `start.bat` asks you to run `install.bat` when an update

@@ -205,6 +205,16 @@ Shoji（旧名 `koukoku_blocker`）の各ファイルの目的・設計思想と
   Shoji は Brotli で圧縮されたページを復号して書き換えるので、細工したサイトを開くと影響を受けうる。mitmproxy 12.3.0 は Brotli 1.2.0 以下に制限していたため、
   修正版の Brotli 1.2.1 を求める mitmproxy 12.3.1 に、2 つ合わせて更新した（ほかの部品は変えていない）。ソース版も `mitmproxy>=12.3.1` にした。
 
+### v0.5.4 — ソース版の部品の更新漏れ対策と winget（2026-10-28）
+- きっかけ: v0.5.3 の公開後、開発機の E:\shoji はリポジトリが v0.5.3 なのに、.venv の部品は mitmproxy 12.2.3／Brotli 1.2.0 のままだった。
+  `git pull` では部品は更新されず、`start.bat` は確認せずに起動していた。また Shoji の起動中は `_brotli.cp312-win_amd64.pyd` が使用中のため、pip の更新が WinError 5 で失敗した。
+- **部品の確認**（`shoji/depcheck.py`）: ソース版は起動時に、入っている部品を `requirements-lock.txt` と比べ、古い・入っていない部品をログとダッシュボード（統計タブの上の赤枠）で知らせる。新しい版は問題にしない。
+- **install.bat**: Shoji が起動中なら止まる（.venv の python/pythonw が動いているかで判断）。固定の一覧を `--require-hashes` で入れ、入れられなければ `requirements.txt` で入れる。
+  入れた一覧の写しを `.venv\shoji-installed-lock.txt` に残し、`start.bat` / `start_console.bat` は一覧が変わっていれば install.bat を促して止まる。CI で install.bat を Windows（Python 3.12/3.13）で実行して確かめる。
+- **winget**: Shoji の起動中に `winget upgrade` が Microsoft Store のソースで 0x8a15005e（サーバー証明書が一致しない）で失敗した。winget は接続が成立した後に証明書を独自に確かめるため、証明書を受け付けないアプリを自動で覚える仕組みでは気づけない。
+  `mp.microsoft.com`・`winget.microsoft.com`・`winget.azureedge.net` を内蔵の「復号しない一覧」に加えた。
+- 片付け: 旧版 koukoku_blocker のルート証明書（名前 mitmproxy）が Windows に信頼されたまま残っていたので、利用者が削除した。旧フォルダも削除。
+
 ---
 
 ## 3. ファイル一覧
