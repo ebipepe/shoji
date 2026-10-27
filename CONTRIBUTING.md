@@ -60,6 +60,9 @@ rem Update everything:
 python packaging/update_locks.py --upgrade
 ```
 
+Quit Shoji before running `install.bat` or `pip install` on the source version: Windows locks the files of a running
+Shoji (for example `_brotli.cp312-win_amd64.pyd`) and pip fails with "Access is denied". `install.bat` checks this.
+
 `python tests/test_core.py` fails if `requirements-lock.txt` is missing a package from `requirements.txt`, and a
 pull request that changes these files runs a trial Windows build. Security fixes in bundled packages are released
 promptly; other updates are usually batched with a regular release.

@@ -108,6 +108,11 @@ start.bat
 ```
 
 `start.bat` runs Shoji in the tray without a console window. Use `start_console.bat` to see the log while debugging.
+`install.bat` installs the same pinned, hash-checked package versions as the Windows app (`requirements-lock.txt`).
+
+**Updating:** quit Shoji from the tray first (Windows locks the files of a running Shoji), then run
+`git pull` and **`install.bat` again**. `git pull` alone does not update the packages; `start.bat` and the dashboard
+tell you when `install.bat` is needed.
 
 ## Use
 

@@ -82,6 +82,11 @@ start.bat
 ```
 
 `start.bat` はコンソール画面を出さずにタスクトレイで起動します。ログを見ながら動かすときは `start_console.bat` を使います。
+`install.bat` は、Windows アプリ版と同じ版の部品を、指紋（ハッシュ）を確かめて入れます（`requirements-lock.txt`）。
+
+**更新するとき:** まずタスクトレイから Shoji を終了し（起動中は部品のファイルが使用中で更新できません）、
+`git pull` のあと **`install.bat` をもう一度実行**します。`git pull` だけでは部品は新しくなりません。
+`install.bat` が必要なときは、`start.bat` とダッシュボードが知らせます。
 
 ## 使い方
 
