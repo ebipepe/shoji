@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-10-28
+
 ### Added
 - **ClickFix protection.** Pages that secretly copy a dangerous command (PowerShell, mshta, `cmd /c`, …) to the
   clipboard and tell you to paste it into the Run box ("I'm not a robot", "press Win+R") are stopped: the clipboard

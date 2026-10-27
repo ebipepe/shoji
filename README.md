@@ -49,6 +49,12 @@ Everything happens on your machine. Nothing is sent to any Shoji server, because
 | **Stealth mode** | Strips tracking parameters (`utm_*`, `fbclid`, `gclid`, …), hides your search terms from destination sites, trims referrers, blocks tracker cookies, sends DNT/GPC, removes high-entropy Client Hints and `X-Client-Data`, prevents WebRTC IP leaks and resists screen/hardware/canvas fingerprinting. |
 | **AMP off** | Redirects Google AMP viewer/cache URLs and AMP pages to the publisher's normal page. |
 | **Dangerous sites & scams** | Warns before opening known malware, phishing and cryptomining sites (URLhaus, phishing and NoCoin lists), and defuses tech-support-scam pages that lock the screen with endless alerts, full screen and back-button traps. |
+| **ClickFix** | Stops pages that secretly copy a dangerous command (PowerShell, mshta, …) for you to paste into the Run box, such as fake "I'm not a robot" checks. The clipboard gets a harmless notice instead. |
+| **Look-alike domains** | Warns before opening a domain made to look like a well-known site (`аpple.com` with a Cyrillic "а", `paypa1.com`, …), covering ~120 commonly phished sites including Japanese banks, cards, carriers and delivery services. |
+| **Dangerous file types** | Asks before downloading files that run as a program when opened (.hta, .js, .vbs, .lnk, .scr, .bat, .ps1, …). |
+| **Notification prompts** | Stops "Show notifications?" prompts that appear as soon as a page opens, a common start of fake-virus-alert scams. |
+| **Browser update check** | Tells you when the Edge, Chrome or Firefox you use is behind the latest version — the main defence against attacks that work just by opening a page. |
+| **Apps** | Shows which apps connect through Shoji, to which servers, and what was blocked (in memory only). |
 | **Annoyances** | Optional AdGuard lists that hide cookie notices, in-page pop-ups, chat widgets, app banners and social buttons (off by default). |
 | **Element picker** | Press `Ctrl`+`Shift`+`Alt`+`H` on any page, click the thing you want gone, and Shoji saves a "hide this on this site" rule. |
 | **Turn off on a site** | If a site breaks, press `Ctrl`+`Shift`+`Alt`+`P` to turn Shoji off there for an hour or always, or allow a recently opened site from the dashboard with one click. |
