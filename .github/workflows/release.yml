@@ -45,15 +45,16 @@ jobs:
       - name: Collect third-party licenses
         # Apache-2.0 / MIT / BSD all require their license (and NOTICE) texts to ship with
         # binary redistributions. Generate them from exactly the packages bundled in the exe.
-        # pip-licenses runs from its own environment, so it lists only what Shoji bundles.
+        # pip-licenses runs from its own environment, so it lists only what is installed for Shoji.
+        # --with-system: otherwise pip-licenses hides packages it uses itself (such as wcwidth).
         run: |
           python -m venv .tools
           .tools\Scripts\pip install --require-hashes -r packaging/licenses-lock.txt
           $py = (Resolve-Path .venv\Scripts\python.exe).Path
           .tools\Scripts\pip-licenses --python $py --from=mixed --with-urls --with-license-file --with-notice-file `
-            --no-license-path --format=plain-vertical --ignore-packages pip setuptools `
+            --no-license-path --format=plain-vertical --with-system --ignore-packages pip setuptools `
             --output-file THIRD_PARTY_LICENSES.txt
-          .tools\Scripts\pip-licenses --python $py --from=mixed --format=markdown --ignore-packages pip setuptools
+          .tools\Scripts\pip-licenses --python $py --from=mixed --format=markdown --with-system --ignore-packages pip setuptools
           Add-Content THIRD_PARTY_LICENSES.txt "`n`nPyInstaller bootloader`nGPL-2.0 with a special exception that permits distributing the bundled application under any license.`nhttps://github.com/pyinstaller/pyinstaller/blob/develop/COPYING.txt"
 
       - name: Build Shoji.exe

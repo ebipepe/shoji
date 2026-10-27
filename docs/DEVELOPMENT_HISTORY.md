@@ -197,7 +197,9 @@ Shoji（旧名 `koukoku_blocker`）の各ファイルの目的・設計思想と
 - **部品の版の固定**: これまで exe のビルドは、毎回その時点の最新版の部品を入れていた（v0.5.1 では mitmproxy が知らないうちに新しい版になった）。
   `requirements-lock.txt`（exe に入る部品、版とハッシュ付き）、`packaging/build-lock.txt`（PyInstaller）、`packaging/licenses-lock.txt`（pip-licenses）を作り、
   ビルドは `--require-hashes` でその一覧どおりにだけ入れる。一覧は `packaging/update_locks.py`（uv を使用）で作り直す。ソース版と CI は `requirements.txt`（下限だけ）で最新版を使い続け、新しい版との相性を早めに見つける。
-  - pip-licenses を別の環境から動かすようにした結果、`wcwidth`（urwid が使う）のライセンス文が THIRD_PARTY_LICENSES.txt から漏れていたことに気づき、直した。
+  - `wcwidth`（urwid が使う）が THIRD_PARTY_LICENSES.txt に載っていなかった。pip-licenses は自分が使う部品（wcwidth など）を既定で一覧から外すため。
+    v0.5.3 の公開後に ZIP を確かめて、別の環境から動かすだけでは直っていなかったことが分かり、`--with-system` を付けた（v0.5.4 から載る）。
+    なお wcwidth は exe には入っていない（PyInstaller が使われない部品として外す）ので、ライセンス上の不足ではなかった。
   - GitHub の Dependabot alerts を有効にし、安全の知らせを受け取る。自動の更新案（security updates）は一覧の一部だけを変えて食い違うおそれがあるので使わず、知らせを見て `update_locks.py -P` で更新する。
 - **Brotli の脆弱性**: Dependabot alerts を有効にした直後に、Brotli 1.0.3〜1.2.0 の復号の範囲外書き込み（重大度 Critical）の知らせが届いた。
   Shoji は Brotli で圧縮されたページを復号して書き換えるので、細工したサイトを開くと影響を受けうる。mitmproxy 12.3.0 は Brotli 1.2.0 以下に制限していたため、

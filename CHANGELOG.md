@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Fixed
+- `THIRD_PARTY_LICENSES.txt` now also lists `wcwidth`, which is installed with mitmproxy's urwid. pip-licenses hides
+  it by default because it uses the package itself. It is not part of `Shoji.exe`, so earlier releases were not
+  missing a required license; it is listed for completeness. (The v0.5.3 notes said this was already fixed; it was not.)
+
 ## [0.5.3] - 2026-10-28
 
 ### Security
@@ -17,9 +22,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### Changed
 - The Windows release is now built from pinned versions with hashes (`requirements-lock.txt`), so third-party
   packages change only when they are deliberately updated. See *Dependencies* in CONTRIBUTING.md.
-
-### Fixed
-- The license text of `wcwidth` (bundled with mitmproxy's urwid) is now included in `THIRD_PARTY_LICENSES.txt`.
 
 ## [0.5.2] - 2026-10-24
 
