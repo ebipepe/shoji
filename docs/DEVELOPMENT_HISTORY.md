@@ -191,6 +191,17 @@ Shoji（旧名 `koukoku_blocker`）の各ファイルの目的・設計思想と
 - **文書**: プライバシーポリシー（`docs/PRIVACY.md`）、コード署名の方針（`docs/CODE_SIGNING.md`）、README のアンインストールの節。
 - **X の広告ツイート**: 利用者から「X の広告ツイートが消えない」と指摘。既存のリストの X 向けのルールは「プロモーション」「Promoted」という表示の文字を目印にしていたが、今の X は日本語の画面で「広告」と表示するため一致していなかった。
   - X のページが受け取る GraphQL の JSON で、広告の項目には `promotedMetadata` が付き、項目の ID が `promoted-` で始まる。これを通信の段階で取り除く（`shoji/xcom.py`）。YouTube の動画広告と同じ考え方で、表示の言語や見た目に左右されない。
+  - 通信自体は通して中身を書き換えるので、フィルタリングログでは「ブロック」ではなく「変更」と表示する。
+
+### v0.5.3 — 部品の版の固定と Brotli の脆弱性（2026-10-28）
+- **部品の版の固定**: これまで exe のビルドは、毎回その時点の最新版の部品を入れていた（v0.5.1 では mitmproxy が知らないうちに新しい版になった）。
+  `requirements-lock.txt`（exe に入る部品、版とハッシュ付き）、`packaging/build-lock.txt`（PyInstaller）、`packaging/licenses-lock.txt`（pip-licenses）を作り、
+  ビルドは `--require-hashes` でその一覧どおりにだけ入れる。一覧は `packaging/update_locks.py`（uv を使用）で作り直す。ソース版と CI は `requirements.txt`（下限だけ）で最新版を使い続け、新しい版との相性を早めに見つける。
+  - pip-licenses を別の環境から動かすようにした結果、`wcwidth`（urwid が使う）のライセンス文が THIRD_PARTY_LICENSES.txt から漏れていたことに気づき、直した。
+  - GitHub の Dependabot alerts を有効にし、安全の知らせを受け取る。自動の更新案（security updates）は一覧の一部だけを変えて食い違うおそれがあるので使わず、知らせを見て `update_locks.py -P` で更新する。
+- **Brotli の脆弱性**: Dependabot alerts を有効にした直後に、Brotli 1.0.3〜1.2.0 の復号の範囲外書き込み（重大度 Critical）の知らせが届いた。
+  Shoji は Brotli で圧縮されたページを復号して書き換えるので、細工したサイトを開くと影響を受けうる。mitmproxy 12.3.0 は Brotli 1.2.0 以下に制限していたため、
+  修正版の Brotli 1.2.1 を求める mitmproxy 12.3.1 に、2 つ合わせて更新した（ほかの部品は変えていない）。ソース版も `mitmproxy>=12.3.1` にした。
 
 ---
 

@@ -1,4 +1,4 @@
-mitmproxy>=11.0
+mitmproxy>=12.3.1
 dnslib>=0.9.24
 flask>=3.0
 pystray>=0.19; sys_platform == "win32"

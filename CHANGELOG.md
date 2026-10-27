@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.5.3] - 2026-10-28
+
+### Security
+- Updated the bundled Brotli decoder to 1.2.1 (with mitmproxy 12.3.1). Brotli 1.0.3–1.2.0 has an out-of-bounds
+  write when decoding a crafted compressed stream (critical; GitHub advisory "Node2Shell"). Shoji decodes
+  Brotli-compressed web pages to filter them, so please update. Running from source now requires mitmproxy 12.3.1
+  or later.
+
 ### Changed
 - The Windows release is now built from pinned versions with hashes (`requirements-lock.txt`), so third-party
   packages change only when they are deliberately updated. See *Dependencies* in CONTRIBUTING.md.
