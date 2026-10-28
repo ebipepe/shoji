@@ -8,11 +8,19 @@ Shoji は通信に含まれるブラウザの名前と版（User-Agent）から�
 
 今のブラウザはプライバシーのため、通信に「大きい版」（例: 156）しか書かない。
 そのため分かるのは「大きい版が遅れているか」だけで、細かい修正版（156.0.1234.56）までは確かめられない。
+
+新しい版は、まず一部の利用者にだけ配られ、数日〜数週間かけて全員に広がる（段階的な配信）。
+まだ届いていない人に「更新して」と言っても更新できないので、全員に配られた版だけを「最新」として扱う:
+- Chrome: Google の公開情報で、配信の割合が 100% になった版
+- Edge: 公開から 7 日たった版
+- Firefox: Shoji が初めてその版を見てから 7 日たってから知らせる
+ただし 2 つ以上遅れていれば、確実に古いのですぐ知らせる。
 """
 from __future__ import annotations
 
 import json
 import re
+from datetime import datetime, timezone
 import threading
 import time
 import urllib.request
@@ -27,13 +35,16 @@ _CHROME = re.compile(r"\bChrome/(\d+)\.")
 _FIREFOX = re.compile(r"\bFirefox/(\d+)\.")
 
 SOURCES = {
-    "chrome": "https://versionhistory.googleapis.com/v1/chrome/platforms/win/channels/stable/versions",
+    # 今配信中の正式版（配信の割合 fraction 付き）
+    "chrome": "https://versionhistory.googleapis.com/v1/chrome/platforms/win64/channels/stable/versions/all/releases"
+              "?filter=endtime=none",
     "edge": "https://edgeupdates.microsoft.com/api/products",
     "firefox": "https://product-details.mozilla.org/1.0/firefox_versions.json",
 }
 NAMES = {"edge": "Microsoft Edge", "chrome": "Google Chrome", "firefox": "Firefox"}
 SEEN_DAYS = 3          # この日数より前に見かけたきりのブラウザは、もう使っていないものとして扱う
 REFRESH_HOURS = 24
+ROLLOUT_DAYS = 7       # 段階的な配信が終わるまでの目安（Edge・Firefox）
 
 
 def parse_ua(ua: str) -> Optional[tuple[str, int]]:
@@ -59,20 +70,34 @@ def _major(v) -> Optional[int]:
     return int(m.group(1)) if m else None
 
 
-def latest_from(name: str, data) -> Optional[int]:
-    """各社の公開情報（JSON）から、正式版の最新の大きい版を取り出す"""
+def _published(v) -> float:
+    try:
+        d = datetime.fromisoformat(str(v).replace("Z", "+00:00"))
+    except ValueError:
+        return 0.0
+    if d.tzinfo is None:
+        d = d.replace(tzinfo=timezone.utc)
+    return d.timestamp()
+
+
+def latest_from(name: str, data, now: Optional[float] = None) -> Optional[int]:
+    """各社の公開情報（JSON）から、全員に配られた正式版の最新の大きい版を取り出す"""
+    now = time.time() if now is None else now
     try:
         if name == "chrome":
-            vals = [_major(v.get("version")) for v in data.get("versions", [])]
+            # 配信の割合が 100% になった版だけ（一部の利用者への先行配信中の版は除く）
+            vals = [_major(r.get("version")) for r in data.get("releases", [])
+                    if float(r.get("fraction") or 0) >= 0.999]
         elif name == "edge":
             vals = [_major(r.get("ProductVersion"))
                     for p in data if str(p.get("Product", "")).lower() == "stable"
-                    for r in p.get("Releases", []) if str(r.get("Platform", "")).lower() == "windows"]
+                    for r in p.get("Releases", []) if str(r.get("Platform", "")).lower() == "windows"
+                    and now - _published(r.get("PublishedTime")) >= ROLLOUT_DAYS * 86400]
         elif name == "firefox":
             vals = [_major(data.get("LATEST_FIREFOX_VERSION"))]
         else:
             return None
-    except (AttributeError, TypeError):
+    except (AttributeError, TypeError, ValueError):
         return None
     vals = [v for v in vals if v]
     return max(vals) if vals else None
@@ -92,6 +117,7 @@ class BrowserWatch:
         self._lock = threading.Lock()
         self.seen: dict[str, dict] = {}       # ブラウザ -> {"major": 版, "at": 最後に見た時刻}
         self.latest: dict[str, int] = {}
+        self.latest_since: dict[str, float] = {}   # その「最新の版」を初めて見た時刻
         self.checked_at = 0.0
         self._last_ua = ""
         self._last_info: Optional[tuple[str, int]] = None
@@ -126,6 +152,8 @@ class BrowserWatch:
                 v = None
             if v:
                 with self._lock:
+                    if self.latest.get(name) != v:
+                        self.latest_since[name] = time.time()
                     self.latest[name] = v
         self.checked_at = time.time()
 
@@ -144,8 +172,11 @@ class BrowserWatch:
                 if time.time() - s["at"] > SEEN_DAYS * 86400:
                     continue
                 latest = self.latest.get(name)
+                behind = latest - s["major"] if latest else 0
+                # Firefox は公開の日付が分からないので、Shoji が新しい版を初めて見てから 7 日待つ
+                settled = name != "firefox" or time.time() - self.latest_since.get(name, 0) >= ROLLOUT_DAYS * 86400
                 out.append({"name": name, "label": NAMES[name], "major": s["major"], "latest": latest,
-                            "outdated": bool(latest and s["major"] < latest)})
+                            "outdated": behind >= 2 or (behind == 1 and settled)})
         return out
 
 

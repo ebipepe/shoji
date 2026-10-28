@@ -554,13 +554,22 @@ def test_browser_versions():
     assert browsers.parse_ua(ff) == ("firefox", 145)
     assert browsers.parse_ua(chrome + " OPR/120.0.0.0") is None                       # Opera は対象外
     assert browsers.parse_ua(chrome.replace("Windows NT 10.0; Win64; x64", "Linux; Android 14")) is None
+    import time as _t
+    now = _t.time()
+    old_day, new_day = _t.strftime("%Y-%m-%dT%H:%M:%SZ", _t.gmtime(now - 10 * 86400)), _t.strftime("%Y-%m-%dT%H:%M:%S", _t.gmtime(now - 86400))
     data = {
-        "chrome": {"versions": [{"version": "156.0.7900.12"}, {"version": "155.0.7800.99"}]},
-        "edge": [{"Product": "Beta", "Releases": [{"Platform": "Windows", "ProductVersion": "157.0.1.0"}]},
-                 {"Product": "Stable", "Releases": [{"Platform": "MacOS", "ProductVersion": "157.0.0.1"},
-                                                    {"Platform": "Windows", "ProductVersion": "156.0.4314.50"}]}],
-        "firefox": {"LATEST_FIREFOX_VERSION": "145.0.2", "FIREFOX_ESR": "140.5.0esr"},
+        # 157 は一部の利用者にだけ先行配信中（25%）→ 最新は 156
+        "chrome": {"releases": [{"version": "157.0.7950.10", "fraction": 0.25},
+                                {"version": "156.0.7900.12", "fraction": 1}]},
+        # 157 は公開から 1 日だけ → 最新は 156。Beta と Mac は対象外
+        "edge": [{"Product": "Beta", "Releases": [{"Platform": "Windows", "ProductVersion": "158.0.1.0", "PublishedTime": old_day}]},
+                 {"Product": "Stable", "Releases": [{"Platform": "MacOS", "ProductVersion": "160.0.0.1", "PublishedTime": old_day},
+                                                    {"Platform": "Windows", "ProductVersion": "157.0.10.1", "PublishedTime": new_day},
+                                                    {"Platform": "Windows", "ProductVersion": "156.0.4314.50", "PublishedTime": old_day}]}],
+        "firefox": {"LATEST_FIREFOX_VERSION": "146.0", "FIREFOX_ESR": "140.5.0esr"},
     }
+    assert browsers.latest_from("chrome", data["chrome"]) == 156
+    assert browsers.latest_from("edge", data["edge"]) == 156
     asked = []
 
     def fetch(url):
@@ -574,8 +583,10 @@ def test_browser_versions():
     w.refresh()
     assert sorted(asked) == ["edge", "firefox"]                  # 使っていない Chrome は問い合わせない
     rep = {r["name"]: r for r in w.report()}
-    assert rep["edge"]["outdated"] and rep["edge"]["latest"] == 156 and rep["edge"]["major"] == 154
-    assert not rep["firefox"]["outdated"]
+    assert rep["edge"]["outdated"] and rep["edge"]["latest"] == 156 and rep["edge"]["major"] == 154   # 2 つ遅れ
+    assert rep["firefox"]["latest"] == 146 and not rep["firefox"]["outdated"]   # 1 つ遅れ、まだ配信の途中かもしれない
+    w.latest_since["firefox"] -= 8 * 86400
+    assert {r["name"]: r for r in w.report()}["firefox"]["outdated"]           # 7 日たったら知らせる
     assert not w.needs_refresh()
     w.note(edge.replace("154.0.0.0", "156.0.0.0"))               # 更新した
     assert not {r["name"]: r for r in w.report()}["edge"]["outdated"]

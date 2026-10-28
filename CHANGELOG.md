@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Fixed
+- The browser update check no longer reports a version that is still being rolled out to only some users (for
+  example "Chrome 157" while 157 was reaching 25% of users). Chrome counts a version only once Google serves it to
+  all users; Edge counts a version 7 days after release; for Firefox Shoji waits 7 days after first seeing a new
+  version. A browser two or more versions behind is still reported right away.
+
 ## [0.6.0] - 2026-10-28
 
 ### Added
